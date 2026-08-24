@@ -1,10 +1,8 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/scenema-logo-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/brand/scenema-logo-light.png">
-    <img alt="Scenema" src="./assets/brand/scenema-logo-light.png" width="560">
-  </picture>
+  <img alt="Scenema film-strip S symbol" src="./apps/site/public/assets/scenema-symbol.png" width="220">
 </p>
+
+<h1 align="center">Scenema</h1>
 
 <p align="center">
   <strong>Declarative choreography for real web applications.</strong>
