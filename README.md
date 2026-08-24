@@ -61,16 +61,18 @@ const onboarding = defineScenario({
         pathname: "/projects",
         visible: "#project-list",
       },
-      steps: [{
-        id: "create-project",
-        target: "#create-project",
-        enter: { cursor: "move" },
-        present: { title: "Create a project" },
-        transition: {
-          trigger: { click: true },
-          to: "project-create",
+      steps: [
+        {
+          id: "create-project",
+          target: "#create-project",
+          enter: { cursor: "move" },
+          present: { title: "Create a project" },
+          transition: {
+            trigger: { click: true },
+            to: "project-create",
+          },
         },
-      }],
+      ],
     },
     {
       id: "project-create",
@@ -78,14 +80,16 @@ const onboarding = defineScenario({
         pathname: "/projects/new",
         visible: "#project-form",
       },
-      steps: [{
-        id: "project-name",
-        target: "#project-name",
-        enter: { cursor: "move" },
-        present: { title: "Choose a name" },
-        commit: { type: { value: "My Project" } },
-        exit: { until: { value: "My Project" } },
-      }],
+      steps: [
+        {
+          id: "project-name",
+          target: "#project-name",
+          enter: { cursor: "move" },
+          present: { title: "Choose a name" },
+          commit: { type: { value: "My Project" } },
+          exit: { until: { value: "My Project" } },
+        },
+      ],
     },
   ],
 });
@@ -127,13 +131,13 @@ The runtime never relies on `beforeunload` for critical persistence. SPA route c
 
 ## Packages
 
-| Package | Responsibility |
-| --- | --- |
-| `@scenema/core` | Scenario DSL, validation, session codec, guided state machine |
-| `@scenema/runtime-web` | DOM matching, conditions, storage, navigation observation |
-| `@scenema/actorble` | Actorble-compatible actor adapter |
-| `@scenema/presenter` | Accessible Shadow DOM tour presenter |
-| `scenema` | Registry, bootstrap, lifecycle, and public API |
+| Package                | Responsibility                                                |
+| ---------------------- | ------------------------------------------------------------- |
+| `@scenema/core`        | Scenario DSL, validation, session codec, guided state machine |
+| `@scenema/runtime-web` | DOM matching, conditions, storage, navigation observation     |
+| `@scenema/actorble`    | Actorble-compatible actor adapter                             |
+| `@scenema/presenter`   | Accessible Shadow DOM tour presenter                          |
+| `scenema`              | Registry, bootstrap, lifecycle, and public API                |
 
 ## Landing & Live Demo
 
