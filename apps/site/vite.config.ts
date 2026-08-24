@@ -12,7 +12,7 @@ export default defineConfig({
       "@scenema/core": workspace("packages/core/src/index.ts"),
       "@scenema/runtime-web": workspace("packages/runtime-web/src/index.ts"),
       "@scenema/presenter": workspace("packages/presenter/src/index.ts"),
-      "scenema": workspace("packages/scenema/src/index.ts"),
+      scenema: workspace("packages/scenema/src/index.ts"),
     },
   },
   build: { outDir: workspace("dist/site"), emptyOutDir: true },

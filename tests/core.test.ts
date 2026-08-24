@@ -42,7 +42,9 @@ function createHarness(overrides: { actor?: Actor; matchedScene?: () => string }
     actor,
     presenter,
     sessionStore: store,
-    sceneMatcher: { matches: async (scene) => scene.id === (overrides.matchedScene?.() ?? matchedScene) },
+    sceneMatcher: {
+      matches: async (scene) => scene.id === (overrides.matchedScene?.() ?? matchedScene),
+    },
     conditionWaiter: { waitFor: vi.fn(async () => undefined) },
     createId: () => "session-1",
     now: () => 100,
@@ -55,18 +57,22 @@ describe("ScenarioRuntime", () => {
     const scenario = defineScenario({
       id: "typing",
       version: 1,
-      scenes: [{
-        id: "main",
-        match: { pathname: "/" },
-        steps: [{
-          id: "name",
-          target: "#name",
-          enter: { cursor: "move" },
-          present: { title: "Name it" },
-          commit: { type: { value: "Scenema" } },
-          exit: { until: { value: "Scenema" } },
-        }],
-      }],
+      scenes: [
+        {
+          id: "main",
+          match: { pathname: "/" },
+          steps: [
+            {
+              id: "name",
+              target: "#name",
+              enter: { cursor: "move" },
+              present: { title: "Name it" },
+              commit: { type: { value: "Scenema" } },
+              exit: { until: { value: "Scenema" } },
+            },
+          ],
+        },
+      ],
     });
     const { runtime, store, actor, presenter } = createHarness();
 
@@ -78,7 +84,13 @@ describe("ScenarioRuntime", () => {
     await runtime.proceed();
     expect(actor.type).toHaveBeenCalledWith("#name", "Scenema");
     expect(runtime.inspect().currentPhase).toBe("complete");
-    expect(store.writes.map(({ phase }) => phase)).toEqual(["enter", "enter", "present", "commit", "complete"]);
+    expect(store.writes.map(({ phase }) => phase)).toEqual([
+      "enter",
+      "enter",
+      "present",
+      "commit",
+      "complete",
+    ]);
   });
 
   it("persists a prepared transition before performing its trigger", async () => {
@@ -103,7 +115,17 @@ describe("ScenarioRuntime", () => {
       id: "navigation",
       version: 1,
       scenes: [
-        { id: "source", match: {}, steps: [{ id: "go", target: "#go", transition: { trigger: { click: true }, to: "destination" } }] },
+        {
+          id: "source",
+          match: {},
+          steps: [
+            {
+              id: "go",
+              target: "#go",
+              transition: { trigger: { click: true }, to: "destination" },
+            },
+          ],
+        },
         { id: "destination", match: {}, steps: [{ id: "arrived", present: { title: "Arrived" } }] },
       ],
     });
@@ -125,7 +147,15 @@ describe("ScenarioRuntime", () => {
     const scenario = defineScenario({
       id: "restore",
       version: 1,
-      scenes: [{ id: "main", match: {}, steps: [{ id: "one", target: "#one", enter: { cursor: "move" }, present: { title: "One" } }] }],
+      scenes: [
+        {
+          id: "main",
+          match: {},
+          steps: [
+            { id: "one", target: "#one", enter: { cursor: "move" }, present: { title: "One" } },
+          ],
+        },
+      ],
     });
     const first = createHarness();
     const session = await first.runtime.start(scenario);
@@ -153,7 +183,17 @@ describe("ScenarioRuntime", () => {
       id: "timeout",
       version: 1,
       scenes: [
-        { id: "source", match: {}, steps: [{ id: "go", target: "#go", transition: { trigger: { click: true }, to: "destination", timeout: 500 } }] },
+        {
+          id: "source",
+          match: {},
+          steps: [
+            {
+              id: "go",
+              target: "#go",
+              transition: { trigger: { click: true }, to: "destination", timeout: 500 },
+            },
+          ],
+        },
         { id: "destination", match: {}, steps: [{ id: "done" }] },
       ],
     });
@@ -167,26 +207,40 @@ describe("ScenarioRuntime", () => {
 
 describe("defineScenario", () => {
   it("rejects transitions to unknown scenes", () => {
-    expect(() => defineScenario({
-      id: "bad",
-      version: 1,
-      scenes: [{ id: "only", match: {}, steps: [{ id: "go", target: "#go", transition: { trigger: { click: true }, to: "missing" } }] }],
-    })).toThrow(/unknown scene/);
+    expect(() =>
+      defineScenario({
+        id: "bad",
+        version: 1,
+        scenes: [
+          {
+            id: "only",
+            match: {},
+            steps: [
+              { id: "go", target: "#go", transition: { trigger: { click: true }, to: "missing" } },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/unknown scene/);
   });
 });
 
 describe("session codec", () => {
   it("rejects a transition phase without a checkpoint", () => {
-    expect(() => deserializeSession(JSON.stringify({
-      schemaVersion: 1,
-      id: "session",
-      scenarioId: "demo",
-      scenarioVersion: 1,
-      sceneId: "a",
-      stepId: "one",
-      phase: "transition",
-      revision: 1,
-      updatedAt: 1,
-    }))).toThrowError(ScenemaError);
+    expect(() =>
+      deserializeSession(
+        JSON.stringify({
+          schemaVersion: 1,
+          id: "session",
+          scenarioId: "demo",
+          scenarioVersion: 1,
+          sceneId: "a",
+          stepId: "one",
+          phase: "transition",
+          revision: 1,
+          updatedAt: 1,
+        }),
+      ),
+    ).toThrowError(ScenemaError);
   });
 });

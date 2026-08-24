@@ -25,9 +25,7 @@ export interface StepDefinition {
     cursor: "move" | { moveTo: Target };
   };
   present?: StepPresentation;
-  commit?:
-    | { click: Target | true }
-    | { type: { value: string; target?: Target } };
+  commit?: { click: Target | true } | { type: { value: string; target?: Target } };
   exit?: { until: UntilCondition };
   transition?: TransitionDefinition;
 }

@@ -13,16 +13,18 @@ const demoScenario = defineScenario({
     {
       id: "projects",
       match: { pathname: "/demo/projects", visible: "#project-list" },
-      steps: [{
-        id: "create-project",
-        target: "#create-project",
-        enter: { cursor: "move" },
-        present: {
-          title: "Create your first project",
-          description: "You set the pace. Select Next when you’re ready.",
+      steps: [
+        {
+          id: "create-project",
+          target: "#create-project",
+          enter: { cursor: "move" },
+          present: {
+            title: "Create your first project",
+            description: "You set the pace. Select Next when you’re ready.",
+          },
+          transition: { trigger: { click: true }, to: "project-create" },
         },
-        transition: { trigger: { click: true }, to: "project-create" },
-      }],
+      ],
     },
     {
       id: "project-create",
@@ -48,13 +50,15 @@ const demoScenario = defineScenario({
     {
       id: "project-ready",
       match: { pathname: "/demo/projects/launch-workspace", visible: "#project-ready" },
-      steps: [{
-        id: "complete",
-        present: {
-          title: "The scenario stayed with you",
-          description: "The route changed twice. The same scenario continued.",
+      steps: [
+        {
+          id: "complete",
+          present: {
+            title: "The scenario stayed with you",
+            description: "The route changed twice. The same scenario continued.",
+          },
         },
-      }],
+      ],
     },
   ],
 });
@@ -96,7 +100,9 @@ class DemoActor implements Actor {
     }
     element.focus();
     element.value = value;
-    element.dispatchEvent(new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
+    element.dispatchEvent(
+      new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }),
+    );
     element.dispatchEvent(new Event("change", { bubbles: true }));
     setDemoStatus(`Entered “${value}”.`);
   }
@@ -250,7 +256,9 @@ function renderDemoContent(): void {
       error.textContent = "";
       navigateDemo("/demo/projects/launch-workspace");
     });
-    document.querySelector("#cancel-project")?.addEventListener("click", () => navigateDemo("/demo/projects"));
+    document
+      .querySelector("#cancel-project")
+      ?.addEventListener("click", () => navigateDemo("/demo/projects"));
     return;
   }
   if (location.pathname === "/demo/projects/launch-workspace") {
@@ -262,7 +270,9 @@ function renderDemoContent(): void {
   workspace.innerHTML = `
     <div class="workspace-header"><div><h1>Projects</h1><p>Workspaces your team can access.</p></div><button class="button" id="create-project" type="button">Create project</button></div>
     <div class="project-list" id="project-list"><div class="project-row"><div><strong>Website refresh</strong><span>Design and engineering</span></div><span>12 members</span></div><div class="project-row"><div><strong>Research library</strong><span>Customer insights</span></div><span>6 members</span></div></div>`;
-  document.querySelector("#create-project")?.addEventListener("click", () => navigateDemo("/demo/projects/new"));
+  document
+    .querySelector("#create-project")
+    ?.addEventListener("click", () => navigateDemo("/demo/projects/new"));
 }
 
 async function initializeDemo(): Promise<void> {
@@ -330,7 +340,8 @@ function setDemoStatus(message: string, error = false): void {
 function route(): void {
   const isDemo = location.pathname.startsWith("/demo");
   if (isDemo) {
-    if (location.pathname === "/demo" || location.pathname === "/demo/") history.replaceState(null, "", "/demo/projects");
+    if (location.pathname === "/demo" || location.pathname === "/demo/")
+      history.replaceState(null, "", "/demo/projects");
     if (demoRuntime) {
       renderDemoContent();
       if (demoRuntime.inspect().session) queueMicrotask(() => void demoRuntime?.reconcile());

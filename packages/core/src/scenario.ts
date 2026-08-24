@@ -3,7 +3,10 @@ import type { ScenarioDefinition } from "./types.js";
 
 export function defineScenario<const T extends ScenarioDefinition>(scenario: T): T {
   if (!scenario.id || !Number.isInteger(scenario.version) || scenario.version < 1) {
-    throw new ScenemaError("INVALID_SCENARIO", "A scenario needs an id and a positive integer version.");
+    throw new ScenemaError(
+      "INVALID_SCENARIO",
+      "A scenario needs an id and a positive integer version.",
+    );
   }
 
   const sceneIds = new Set<string>();
@@ -16,7 +19,10 @@ export function defineScenario<const T extends ScenarioDefinition>(scenario: T):
     const stepIds = new Set<string>();
     for (const step of scene.steps) {
       if (!step.id || stepIds.has(step.id)) {
-        throw new ScenemaError("INVALID_SCENARIO", `Step id is missing or duplicated in ${scene.id}: ${step.id}`);
+        throw new ScenemaError(
+          "INVALID_SCENARIO",
+          `Step id is missing or duplicated in ${scene.id}: ${step.id}`,
+        );
       }
       stepIds.add(step.id);
       const needsStepTarget =

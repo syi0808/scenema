@@ -9,7 +9,10 @@ export const ACTIVE_SESSION_KEY = "__scenema__:v1:active-session";
 export const SESSION_KEY_PREFIX = "__scenema__:v1:session:";
 
 export class LocalStorageSessionStore implements SessionStore {
-  constructor(private readonly storage: Storage, private readonly prefix = SESSION_KEY_PREFIX) {}
+  constructor(
+    private readonly storage: Storage,
+    private readonly prefix = SESSION_KEY_PREFIX,
+  ) {}
 
   read(id: string): ScenarioSession | null {
     const serialized = this.storage.getItem(this.key(id));
@@ -30,7 +33,10 @@ export class LocalStorageSessionStore implements SessionStore {
 }
 
 export class ActiveSessionPointer {
-  constructor(private readonly storage: Storage, private readonly key = ACTIVE_SESSION_KEY) {}
+  constructor(
+    private readonly storage: Storage,
+    private readonly key = ACTIVE_SESSION_KEY,
+  ) {}
 
   get(): string | null {
     return this.storage.getItem(this.key);
@@ -45,10 +51,14 @@ export class ActiveSessionPointer {
   }
 }
 
-export function createLocalStorageSessionStore(storage: Storage = window.localStorage): SessionStore {
+export function createLocalStorageSessionStore(
+  storage: Storage = window.localStorage,
+): SessionStore {
   return new LocalStorageSessionStore(storage);
 }
 
-export function createActiveSessionPointer(storage: Storage = window.sessionStorage): ActiveSessionPointer {
+export function createActiveSessionPointer(
+  storage: Storage = window.sessionStorage,
+): ActiveSessionPointer {
   return new ActiveSessionPointer(storage);
 }

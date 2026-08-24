@@ -17,8 +17,10 @@ beforeAll(async () => {
     })),
   });
   Element.prototype.scrollIntoView = vi.fn();
-  window.requestAnimationFrame = (callback: FrameRequestCallback) => window.setTimeout(() => callback(0), 0);
-  document.body.innerHTML = '<a class="skip-link" href="#main">Skip to content</a><div id="app"></div>';
+  window.requestAnimationFrame = (callback: FrameRequestCallback) =>
+    window.setTimeout(() => callback(0), 0);
+  document.body.innerHTML =
+    '<a class="skip-link" href="#main">Skip to content</a><div id="app"></div>';
   history.replaceState(null, "", "/demo/projects");
   await import("../apps/site/src/main.ts");
 });
@@ -35,7 +37,9 @@ describe("landing demo", () => {
 
     clickTourNext();
     await expectTourTitle("Create the project");
-    expect((document.querySelector("#project-name") as HTMLInputElement).value).toBe("Launch workspace");
+    expect((document.querySelector("#project-name") as HTMLInputElement).value).toBe(
+      "Launch workspace",
+    );
 
     clickTourNext();
     await vi.waitFor(() => expect(location.pathname).toBe("/demo/projects/launch-workspace"));
@@ -43,7 +47,9 @@ describe("landing demo", () => {
     expect(document.querySelector("#project-ready")).not.toBeNull();
 
     clickTourNext();
-    await vi.waitFor(() => expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull());
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull(),
+    );
   });
 });
 

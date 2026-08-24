@@ -1,4 +1,11 @@
-import { ScenemaError, type ConditionWaiter, type SceneDefinition, type SceneMatcher, type Target, type UntilCondition } from "@scenema/core";
+import {
+  ScenemaError,
+  type ConditionWaiter,
+  type SceneDefinition,
+  type SceneMatcher,
+  type Target,
+  type UntilCondition,
+} from "@scenema/core";
 
 export interface DomEnvironment {
   window: Window;
@@ -39,17 +46,24 @@ export class DomConditionWaiter implements ConditionWaiter {
     const startedAt = Date.now();
     while (!this.satisfied(condition, fallbackTarget)) {
       if (Date.now() - startedAt >= timeout) {
-        throw new ScenemaError("TARGET_NOT_FOUND", "Exit condition was not satisfied before timeout.", {
-          condition,
-          fallbackTarget,
-        });
+        throw new ScenemaError(
+          "TARGET_NOT_FOUND",
+          "Exit condition was not satisfied before timeout.",
+          {
+            condition,
+            fallbackTarget,
+          },
+        );
       }
-      await new Promise((resolve) => this.environment.window.setTimeout(resolve, this.pollInterval));
+      await new Promise((resolve) =>
+        this.environment.window.setTimeout(resolve, this.pollInterval),
+      );
     }
   }
 
   private satisfied(condition: UntilCondition, fallbackTarget?: Target): boolean {
-    if (condition.visible && !this.environment.document.querySelector(condition.visible)) return false;
+    if (condition.visible && !this.environment.document.querySelector(condition.visible))
+      return false;
     if (condition.value !== undefined) {
       if (!fallbackTarget) return false;
       const element = this.environment.document.querySelector(fallbackTarget);
@@ -65,8 +79,12 @@ export function resolveDomTarget(document: Document, target: Target): Element {
   try {
     element = document.querySelector(target);
   } catch (cause) {
-    throw new ScenemaError("TARGET_NOT_FOUND", `Target selector is invalid: ${target}`, { target, cause });
+    throw new ScenemaError("TARGET_NOT_FOUND", `Target selector is invalid: ${target}`, {
+      target,
+      cause,
+    });
   }
-  if (!element) throw new ScenemaError("TARGET_NOT_FOUND", `Target was not found: ${target}`, { target });
+  if (!element)
+    throw new ScenemaError("TARGET_NOT_FOUND", `Target was not found: ${target}`, { target });
   return element;
 }

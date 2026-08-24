@@ -40,7 +40,9 @@ describe("web persistence", () => {
 
     expect(sessionStorage.getItem(ACTIVE_SESSION_KEY)).toBe("abc");
     expect(store.read("abc")).toEqual(session);
-    expect(deserializeSession(localStorage.getItem("__scenema__:v1:session:abc")!)).toEqual(session);
+    expect(deserializeSession(localStorage.getItem("__scenema__:v1:session:abc")!)).toEqual(
+      session,
+    );
   });
 });
 
@@ -50,11 +52,18 @@ describe("DOM runtime primitives", () => {
     document.body.innerHTML = '<main id="project-form"></main>';
     const matcher = new DomSceneMatcher({ window, document });
 
-    await expect(matcher.matches({
-      id: "create",
-      match: { pathname: "/projects", search: { mode: "create" }, hash: "#details", visible: "#project-form" },
-      steps: [],
-    })).resolves.toBe(true);
+    await expect(
+      matcher.matches({
+        id: "create",
+        match: {
+          pathname: "/projects",
+          search: { mode: "create" },
+          hash: "#details",
+          visible: "#project-form",
+        },
+        steps: [],
+      }),
+    ).resolves.toBe(true);
   });
 
   it("waits for input values", async () => {
@@ -88,8 +97,23 @@ describe("document-lifetime recovery", () => {
       id: "mpa",
       version: 1,
       scenes: [
-        { id: "a", match: { pathname: "/page-a", visible: "#next" }, steps: [{ id: "leave", target: "#next", present: { title: "Leave" }, transition: { trigger: { click: true }, to: "b" } }] },
-        { id: "b", match: { pathname: "/page-b", visible: "#arrived" }, steps: [{ id: "resume", present: { title: "Resumed" } }] },
+        {
+          id: "a",
+          match: { pathname: "/page-a", visible: "#next" },
+          steps: [
+            {
+              id: "leave",
+              target: "#next",
+              present: { title: "Leave" },
+              transition: { trigger: { click: true }, to: "b" },
+            },
+          ],
+        },
+        {
+          id: "b",
+          match: { pathname: "/page-b", visible: "#arrived" },
+          steps: [{ id: "resume", present: { title: "Resumed" } }],
+        },
       ],
     });
     const firstPresenter: Presenter = { present: vi.fn(), dismiss: vi.fn() };
@@ -103,7 +127,9 @@ describe("document-lifetime recovery", () => {
     void runtimeA.proceed();
     await vi.waitFor(() => {
       const id = sessionStorage.getItem(ACTIVE_SESSION_KEY)!;
-      expect(new LocalStorageSessionStore(localStorage).read(id)?.transition?.status).toBe("prepared");
+      expect(new LocalStorageSessionStore(localStorage).read(id)?.transition?.status).toBe(
+        "prepared",
+      );
     });
     runtimeA.dispose();
 
@@ -113,7 +139,11 @@ describe("document-lifetime recovery", () => {
     const runtimeB = createScenema({ scenarios: [scenario], presenter: secondPresenter });
 
     await expect(runtimeB.bootstrap()).resolves.toBe(true);
-    expect(runtimeB.inspect()).toMatchObject({ currentPhase: "present", currentScene: { id: "b" }, currentStep: { id: "resume" } });
+    expect(runtimeB.inspect()).toMatchObject({
+      currentPhase: "present",
+      currentScene: { id: "b" },
+      currentStep: { id: "resume" },
+    });
     expect(secondPresenter.present).toHaveBeenCalledOnce();
     runtimeB.stop();
     runtimeB.dispose();

@@ -6,10 +6,14 @@ export interface ActorbleLike {
   type(target: Element, value: string): Promise<void> | void;
 }
 
-export function createActorbleActor(actorble: ActorbleLike, document: Document = window.document): Actor {
+export function createActorbleActor(
+  actorble: ActorbleLike,
+  document: Document = window.document,
+): Actor {
   const resolve = (target: Target): Element => {
     const element = document.querySelector(target);
-    if (!element) throw new ScenemaError("TARGET_NOT_FOUND", `Target was not found: ${target}`, { target });
+    if (!element)
+      throw new ScenemaError("TARGET_NOT_FOUND", `Target was not found: ${target}`, { target });
     return element;
   };
 

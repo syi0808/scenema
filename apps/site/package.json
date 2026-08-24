@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@scenema/core": "0.0.0",
-    "@scenema/presenter": "0.0.0",
-    "scenema": "0.0.0"
+    "@scenema/core": "workspace:*",
+    "@scenema/presenter": "workspace:*",
+    "scenema": "workspace:*"
   }
 }

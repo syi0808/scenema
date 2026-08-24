@@ -3,10 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./dist/index.js" },
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs"
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --dts",
+    "clean": "rm -rf dist"
+  },
   "dependencies": {
-    "@scenema/core": "0.0.0",
-    "@scenema/runtime-web": "0.0.0"
+    "@scenema/core": "workspace:*",
+    "@scenema/runtime-web": "workspace:*"
   }
 }

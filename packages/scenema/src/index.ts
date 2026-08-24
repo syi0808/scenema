@@ -55,8 +55,16 @@ export function createScenema(options: ScenemaOptions): Scenema {
   const scheduleTransitionTimeout = (session: ScenarioSession | null) => {
     if (transitionTimer !== undefined) window.clearTimeout(transitionTimer);
     transitionTimer = undefined;
-    if (session?.phase !== "transition" || !session.transition || session.transition.status === "arrived") return;
-    const remaining = Math.max(0, session.transition.startedAt + session.transition.timeout - Date.now());
+    if (
+      session?.phase !== "transition" ||
+      !session.transition ||
+      session.transition.status === "arrived"
+    )
+      return;
+    const remaining = Math.max(
+      0,
+      session.transition.startedAt + session.transition.timeout - Date.now(),
+    );
     transitionTimer = window.setTimeout(() => {
       transitionTimer = undefined;
       void runtime.reconcile().catch((error: unknown) => reportUnexpected(error, options, runtime));
@@ -68,7 +76,9 @@ export function createScenema(options: ScenemaOptions): Scenema {
     sessionStore: store,
     sceneMatcher: new DomSceneMatcher({ window, document }),
     conditionWaiter: new DomConditionWaiter({ window, document }, options.conditionTimeout),
-    ...(options.transitionTimeout === undefined ? {} : { defaultTransitionTimeout: options.transitionTimeout }),
+    ...(options.transitionTimeout === undefined
+      ? {}
+      : { defaultTransitionTimeout: options.transitionTimeout }),
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.onError ? { onError: options.onError } : {}),
     onSessionChange(session) {
@@ -88,9 +98,12 @@ export function createScenema(options: ScenemaOptions): Scenema {
       registry.set(scenario.id, scenario);
     },
     async start(scenarioOrId) {
-      const scenario =
-        typeof scenarioOrId === "string" ? registry.get(scenarioOrId) : scenarioOrId;
-      if (!scenario) throw new ScenemaError("SCENARIO_NOT_FOUND", `Scenario was not registered: ${scenarioOrId}`);
+      const scenario = typeof scenarioOrId === "string" ? registry.get(scenarioOrId) : scenarioOrId;
+      if (!scenario)
+        throw new ScenemaError(
+          "SCENARIO_NOT_FOUND",
+          `Scenario was not registered: ${scenarioOrId}`,
+        );
       registry.set(scenario.id, scenario);
       return runtime.start(scenario);
     },
@@ -113,7 +126,10 @@ export function createScenema(options: ScenemaOptions): Scenema {
       if (!scenario) {
         activeSession.clear();
         store.remove(session.id);
-        throw new ScenemaError("SCENARIO_NOT_FOUND", `Scenario was not registered: ${session.scenarioId}`);
+        throw new ScenemaError(
+          "SCENARIO_NOT_FOUND",
+          `Scenario was not registered: ${session.scenarioId}`,
+        );
       }
       try {
         await runtime.resume(scenario, session);

@@ -85,7 +85,10 @@ export class ScenarioRuntime {
     const scene = this.requireScene(session.sceneId);
     const step = this.requireStep(scene, session.stepId);
     if (!(await this.options.sceneMatcher.matches(scene))) {
-      return this.fail("SCENE_NOT_FOUND", `Persisted scene ${scene.id} does not match the current document.`);
+      return this.fail(
+        "SCENE_NOT_FOUND",
+        `Persisted scene ${scene.id} does not match the current document.`,
+      );
     }
 
     if (session.phase === "commit") {
@@ -138,13 +141,18 @@ export class ScenarioRuntime {
     if (session.phase !== "transition" || !transition) {
       const scene = this.requireScene(session.sceneId);
       if (!(await this.options.sceneMatcher.matches(scene))) {
-        return this.fail("SCENE_NOT_FOUND", `Scene ${scene.id} no longer matches the current document.`);
+        return this.fail(
+          "SCENE_NOT_FOUND",
+          `Scene ${scene.id} no longer matches the current document.`,
+        );
       }
       return;
     }
 
     if (this.now() - transition.startedAt >= transition.timeout) {
-      return this.fail("TRANSITION_TIMEOUT", `Transition to ${transition.toScene} timed out.`, { transition });
+      return this.fail("TRANSITION_TIMEOUT", `Transition to ${transition.toScene} timed out.`, {
+        transition,
+      });
     }
 
     const destination = this.requireScene(transition.toScene);
@@ -162,7 +170,10 @@ export class ScenarioRuntime {
 
   inspect(): RuntimeInspection {
     const session = this.session;
-    const scene = session && this.scenario ? this.scenario.scenes.find(({ id }) => id === session.sceneId) : undefined;
+    const scene =
+      session && this.scenario
+        ? this.scenario.scenes.find(({ id }) => id === session.sceneId)
+        : undefined;
     const step = scene?.steps.find(({ id }) => id === session?.stepId);
     return {
       session: session ? structuredClone(session) : null,
@@ -183,7 +194,8 @@ export class ScenarioRuntime {
     this.persist("step enter");
 
     if (step.enter) {
-      const target = step.enter.cursor === "move" ? this.requireTarget(step) : step.enter.cursor.moveTo;
+      const target =
+        step.enter.cursor === "move" ? this.requireTarget(step) : step.enter.cursor.moveTo;
       await this.options.actor.moveTo(target);
     }
     await this.showPresentation(scene, step);
@@ -236,9 +248,14 @@ export class ScenarioRuntime {
     const commit = step.commit;
     if (!commit) return;
     if ("click" in commit) {
-      await this.options.actor.click(commit.click === true ? this.requireTarget(step) : commit.click);
+      await this.options.actor.click(
+        commit.click === true ? this.requireTarget(step) : commit.click,
+      );
     } else {
-      await this.options.actor.type(commit.type.target ?? this.requireTarget(step), commit.type.value);
+      await this.options.actor.type(
+        commit.type.target ?? this.requireTarget(step),
+        commit.type.value,
+      );
     }
   }
 
@@ -248,7 +265,8 @@ export class ScenarioRuntime {
     transition: TransitionDefinition,
   ): Promise<void> {
     const session = this.requireSession();
-    const target = transition.trigger.click === true ? this.requireTarget(step) : transition.trigger.click;
+    const target =
+      transition.trigger.click === true ? this.requireTarget(step) : transition.trigger.click;
     session.phase = "transition";
     session.transition = {
       id: transition.id ?? `${scene.id}:${step.id}->${transition.to}`,
@@ -261,7 +279,13 @@ export class ScenarioRuntime {
     };
     this.persist("transition prepared");
     await this.options.actor.click(target);
-    if (!this.session || this.session.id !== session.id || session.phase !== "transition" || !session.transition) return;
+    if (
+      !this.session ||
+      this.session.id !== session.id ||
+      session.phase !== "transition" ||
+      !session.transition
+    )
+      return;
     session.transition.status = "triggered";
     this.persist("transition triggered");
     await this.reconcile();
@@ -305,19 +329,25 @@ export class ScenarioRuntime {
   }
 
   private requireSession(): ScenarioSession {
-    if (!this.session) throw new ScenemaError("INVALID_RUNTIME_STATE", "No scenario session is active.");
+    if (!this.session)
+      throw new ScenemaError("INVALID_RUNTIME_STATE", "No scenario session is active.");
     return this.session;
   }
 
   private requireScene(id: string): SceneDefinition {
     const scene = this.requireScenario().scenes.find((candidate) => candidate.id === id);
-    if (!scene) throw new ScenemaError("INVALID_SESSION_STATE", `Session references unknown scene ${id}.`);
+    if (!scene)
+      throw new ScenemaError("INVALID_SESSION_STATE", `Session references unknown scene ${id}.`);
     return scene;
   }
 
   private requireStep(scene: SceneDefinition, id: string): StepDefinition {
     const step = scene.steps.find((candidate) => candidate.id === id);
-    if (!step) throw new ScenemaError("INVALID_SESSION_STATE", `Session references unknown step ${scene.id}/${id}.`);
+    if (!step)
+      throw new ScenemaError(
+        "INVALID_SESSION_STATE",
+        `Session references unknown step ${scene.id}/${id}.`,
+      );
     return step;
   }
 
@@ -326,7 +356,11 @@ export class ScenarioRuntime {
     return step.target;
   }
 
-  private fail(code: ScenemaError["code"], message: string, context: Record<string, unknown> = {}): never {
+  private fail(
+    code: ScenemaError["code"],
+    message: string,
+    context: Record<string, unknown> = {},
+  ): never {
     const error = new ScenemaError(code, message, context);
     this.options.onError?.(error, this.inspect());
     throw error;

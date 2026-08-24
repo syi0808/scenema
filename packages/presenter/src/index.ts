@@ -44,13 +44,15 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const description = root.querySelector("p")!;
       description.textContent = presentation.description ?? "";
       if (!presentation.description) description.remove();
-      root.querySelector(".progress")!.textContent = `${context.stepNumber} / ${context.totalSteps}`;
+      root.querySelector(".progress")!.textContent =
+        `${context.stepNumber} / ${context.totalSteps}`;
       const back = root.querySelector<HTMLButtonElement>(".back")!;
       back.textContent = options.backLabel ?? "Back";
       back.hidden = !context.canPrevious;
       back.addEventListener("click", context.controls.previous);
       const next = root.querySelector<HTMLButtonElement>(".next")!;
-      next.textContent = options.nextLabel ?? (context.stepNumber === context.totalSteps ? "Finish" : "Next");
+      next.textContent =
+        options.nextLabel ?? (context.stepNumber === context.totalSteps ? "Finish" : "Next");
       next.addEventListener("click", context.controls.proceed);
       document.body.append(host);
       const card = root.querySelector<HTMLElement>(".card")!;
@@ -77,7 +79,10 @@ function positionCard(card: HTMLElement, target: string | undefined, document: D
     return;
   }
   const rect = element.getBoundingClientRect();
-  const left = Math.min(Math.max(16, rect.left), Math.max(16, document.defaultView!.innerWidth - 336));
+  const left = Math.min(
+    Math.max(16, rect.left),
+    Math.max(16, document.defaultView!.innerWidth - 336),
+  );
   const top = rect.bottom + 12;
   card.style.left = `${left}px`;
   card.style.top = `${Math.max(16, Math.min(top, document.defaultView!.innerHeight - 180))}px`;

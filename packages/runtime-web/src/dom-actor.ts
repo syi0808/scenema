@@ -20,7 +20,10 @@ export class DomActor implements Actor {
   async type(target: Target, value: string): Promise<void> {
     const element = resolveDomTarget(this.document, target);
     const view = this.document.defaultView!;
-    if (!(element instanceof view.HTMLInputElement) && !(element instanceof view.HTMLTextAreaElement)) {
+    if (
+      !(element instanceof view.HTMLInputElement) &&
+      !(element instanceof view.HTMLTextAreaElement)
+    ) {
       throw new TypeError(`Target does not accept text: ${target}`);
     }
     element.focus();
