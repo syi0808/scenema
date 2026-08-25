@@ -147,7 +147,7 @@ describe("ScenarioRuntime", () => {
     expect(arrivedWrite).toBeDefined();
   });
 
-  it("restores a presenting step without replaying enter choreography", async () => {
+  it("restores a presenting step and its cursor without replaying enter choreography", async () => {
     const scenario = defineScenario({
       id: "restore",
       version: 1,
@@ -163,11 +163,49 @@ describe("ScenarioRuntime", () => {
     });
     const first = createHarness();
     const session = await first.runtime.start(scenario);
-    const second = createHarness();
+    const restoreCursor = vi.fn(async () => undefined);
+    const moveTo = vi.fn(async () => undefined);
+    const second = createHarness({
+      actor: { moveTo, restoreCursor, click: vi.fn(), type: vi.fn() },
+    });
 
     await second.runtime.resume(scenario, structuredClone(session));
 
-    expect(second.actor.moveTo).not.toHaveBeenCalled();
+    expect(session.cursorTarget).toBe("#one");
+    expect(moveTo).not.toHaveBeenCalled();
+    expect(restoreCursor).toHaveBeenCalledOnce();
+    expect(restoreCursor).toHaveBeenCalledWith("#one");
+    expect(second.presenter.present).toHaveBeenCalledOnce();
+    expect(second.runtime.inspect().currentPhase).toBe("present");
+  });
+
+  it("continues restoring the presentation when cursor recovery is unavailable", async () => {
+    const scenario = defineScenario({
+      id: "restore-without-target",
+      version: 1,
+      scenes: [
+        {
+          id: "main",
+          match: {},
+          steps: [
+            { id: "one", target: "#one", enter: { cursor: "move" }, present: { title: "One" } },
+          ],
+        },
+      ],
+    });
+    const first = createHarness();
+    const session = await first.runtime.start(scenario);
+    const restoreCursor = vi.fn(async () => {
+      throw new Error("target disappeared");
+    });
+    const second = createHarness({
+      actor: { moveTo: vi.fn(), restoreCursor, click: vi.fn(), type: vi.fn() },
+    });
+
+    await expect(
+      second.runtime.resume(scenario, structuredClone(session)),
+    ).resolves.toBeUndefined();
+
     expect(second.presenter.present).toHaveBeenCalledOnce();
     expect(second.runtime.inspect().currentPhase).toBe("present");
   });
@@ -253,6 +291,25 @@ describe("defineScenario", () => {
 });
 
 describe("session codec", () => {
+  it("round-trips a semantic cursor target", () => {
+    const session = deserializeSession(
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "session",
+        scenarioId: "demo",
+        scenarioVersion: 1,
+        sceneId: "a",
+        stepId: "one",
+        phase: "present",
+        cursorTarget: "#one",
+        revision: 1,
+        updatedAt: 1,
+      }),
+    );
+
+    expect(session.cursorTarget).toBe("#one");
+  });
+
   it("rejects a transition phase without a checkpoint", () => {
     expect(() =>
       deserializeSession(

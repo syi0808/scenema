@@ -70,6 +70,7 @@ export interface ScenarioSession {
   sceneId: string;
   stepId: string;
   phase: SessionPhase;
+  cursorTarget?: Target;
   transition?: TransitionCheckpoint;
   revision: number;
   updatedAt: number;
@@ -83,6 +84,7 @@ export interface SessionStore {
 
 export interface Actor {
   moveTo(target: Target): Promise<void>;
+  restoreCursor?(target: Target): Promise<void>;
   click(target: Target): Promise<void>;
   type(target: Target, value: string): Promise<void>;
 }

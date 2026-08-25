@@ -25,10 +25,11 @@ document의 runtime이 `sessionStorage` pointer로 같은 session을 찾아 재�
 3. `localStorage` key는 `__scenema__:v1:session:<id>` 형식이다.
 4. Persisted timer 대신 transition의 `startedAt + timeout`을 사용한다.
 5. `beforeunload`, `unload`, `pagehide`에는 의존하지 않는다.
+6. Cursor checkpoint는 viewport 좌표가 아니라 다시 resolve할 수 있는 semantic target을 저장한다.
 
 ## Resume Rules
 
-- `present`: enter action을 재실행하지 않고 presenter만 복원한다.
+- `present`: enter choreography를 재실행하지 않고 저장된 target에 cursor를 즉시 복원한 뒤 presenter를 복원한다.
 - `commit`: action을 중복 실행하지 않고 exit condition부터 검증한다.
 - `transition`: destination scene이 맞으면 `arrived`를 저장하고 첫 step으로 진입한다.
 - intermediate redirect: destination이 아니면 pending checkpoint를 유지한다.

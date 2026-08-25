@@ -146,7 +146,7 @@ active session id ───────────────────→ _
                                       scene · step · phase · transition
 ```
 
-The runtime never relies on `beforeunload` for critical persistence. SPA route changes, MPA bootstrap, reload, browser history, and BFCache restoration all converge on `reconcile()`.
+The runtime never relies on `beforeunload` for critical persistence. SPA route changes, MPA bootstrap, reload, browser history, and BFCache restoration all converge on `reconcile()`. Cursor recovery stores the last semantic target rather than viewport coordinates, so a reload resolves the cursor against the current layout and restores it without replaying the enter animation.
 
 ## Packages
 

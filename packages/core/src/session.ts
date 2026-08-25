@@ -25,6 +25,7 @@ export function deserializeSession(serialized: string): ScenarioSession {
     !isString(value.sceneId) ||
     !isString(value.stepId) ||
     !phases.includes(value.phase as SessionPhase) ||
+    (value.cursorTarget !== undefined && !isString(value.cursorTarget)) ||
     !isNonNegativeInteger(value.revision) ||
     !isFiniteNumber(value.updatedAt)
   ) {

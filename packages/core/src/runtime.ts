@@ -100,6 +100,7 @@ export class ScenarioRuntime {
       await this.activateStep(scene, step);
       return;
     }
+    await this.restoreCursor();
     await this.showPresentation(scene, step);
   }
 
@@ -195,14 +196,30 @@ export class ScenarioRuntime {
     session.stepId = step.id;
     session.phase = "enter";
     delete session.transition;
-    this.persist("step enter");
 
+    let cursorTarget: Target | undefined;
     if (step.enter) {
-      const target =
+      cursorTarget =
         step.enter.cursor === "move" ? this.requireTarget(step) : step.enter.cursor.moveTo;
-      await this.options.actor.moveTo(target);
+      session.cursorTarget = cursorTarget;
     }
+    this.persist("step enter");
+    if (cursorTarget) await this.options.actor.moveTo(cursorTarget);
     await this.showPresentation(scene, step);
+  }
+
+  private async restoreCursor(): Promise<void> {
+    const target = this.requireSession().cursorTarget;
+    if (target && this.options.actor.restoreCursor) {
+      try {
+        await this.options.actor.restoreCursor(target);
+      } catch (error) {
+        this.log("cursor restore skipped", {
+          target,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   private async showPresentation(scene: SceneDefinition, step: StepDefinition): Promise<void> {
