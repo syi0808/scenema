@@ -105,7 +105,7 @@ Every document registers the same scenario and calls `bootstrap()`. If the curre
 
 Scenema creates an `@actorble/browser` instance by default and runs every interaction through its internal actor adapter. Actorble can be configured with the `actorble` option. Advanced integrations can still replace the internal boundary with a custom `Actor` through the `actor` option.
 
-The built-in choreography uses perceptible pacing by default: pointer movement follows an `ease-in-out` curve for `800ms`, clicks approach over `1000ms` and hold for `240ms`, and typing waits `100ms` between characters. The Actorble cursor is rendered at `1.5x` its standard size for visibility. Override individual action values through `actorble.actionDefaults`, provide a custom `actorble.visualLayer` for different cursor rendering, or set `actorble.motion` to `false` when pointer motion should be disabled.
+The built-in choreography uses perceptible pacing by default: pointer movement follows an `ease-in-out` curve for `800ms`, clicks approach over `1000ms` and hold for `240ms`, and typing waits `100ms` between characters. The Actorble cursor is rendered at `2x` its standard size for visibility. Override individual action values through `actorble.actionDefaults`, provide a custom `actorble.visualLayer` for different cursor rendering, or set `actorble.motion` to `false` when pointer motion should be disabled.
 
 The tour presenter highlights the current target with a dimmed overlay. Because the runtime dismisses the presenter before Actorble moves and presents the next step only after the cursor arrives, the overlay fades away while the cursor is in motion and returns smoothly around the target when it stops:
 

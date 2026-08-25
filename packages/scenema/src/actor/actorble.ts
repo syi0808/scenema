@@ -8,7 +8,7 @@ import {
 
 export type ScenemaActorbleOptions = ActorbleFacadeOptions;
 
-export const SCENEMA_ACTORBLE_CURSOR_SCALE = 1.5;
+export const SCENEMA_ACTORBLE_CURSOR_SCALE = 2;
 
 export const SCENEMA_ACTORBLE_ACTION_DEFAULTS = {
   moveTo: { motion: { kind: "ease", timing: "ease-in-out", duration: 800 } },
