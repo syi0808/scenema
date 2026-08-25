@@ -29,9 +29,12 @@ export interface ScenemaOptions {
   document?: Document;
   transitionTimeout?: number;
   conditionTimeout?: number;
+  clickDelay?: number;
   logger?: (message: string, context?: Record<string, unknown>) => void;
   onError?: (error: ScenemaError, inspection: RuntimeInspection) => void;
 }
+
+export const SCENEMA_CLICK_DELAY = 300;
 
 export interface Scenema {
   register(scenario: ScenarioDefinition): void;
@@ -83,6 +86,7 @@ export function createScenema(options: ScenemaOptions): Scenema {
     sessionStore: store,
     sceneMatcher: new DomSceneMatcher({ window, document }),
     conditionWaiter: new DomConditionWaiter({ window, document }, options.conditionTimeout),
+    clickDelay: Math.max(0, options.clickDelay ?? SCENEMA_CLICK_DELAY),
     ...(options.transitionTimeout === undefined
       ? {}
       : { defaultTransitionTimeout: options.transitionTimeout }),

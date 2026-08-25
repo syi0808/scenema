@@ -5,6 +5,7 @@ export interface TourOverlayOptions {
   opacity?: number;
   padding?: number;
   borderRadius?: number;
+  delay?: number;
   duration?: number;
 }
 
@@ -20,6 +21,7 @@ interface ResolvedOverlayOptions {
   opacity: number;
   padding: number;
   borderRadius: number;
+  delay: number;
   duration: number;
 }
 
@@ -40,6 +42,7 @@ const DEFAULT_OVERLAY: ResolvedOverlayOptions = {
   opacity: 0.72,
   padding: 8,
   borderRadius: 10,
+  delay: 240,
   duration: 320,
 };
 
@@ -83,14 +86,17 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .overlay-svg { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; }
           .overlay-surface { fill: var(--overlay-color); opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
-          .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity); }
+          .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity);
+            transition-delay: var(--overlay-delay); }
           .focus-ring { position: fixed; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
             border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #0f172a66, 0 0 24px #fff3;
             opacity: 0; transform: scale(.96); transition: opacity var(--overlay-duration) ease,
             transform var(--overlay-duration) cubic-bezier(.22, 1, .36, 1); }
-          .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1); }
+          .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1);
+            transition-delay: var(--overlay-delay); }
           .scene[data-phase="exit"] .overlay-surface,
-          .scene[data-phase="exit"] .focus-ring, .scene[data-phase="exit"] .card { opacity: 0; }
+          .scene[data-phase="exit"] .focus-ring, .scene[data-phase="exit"] .card { opacity: 0;
+            transition-delay: 0ms; }
           .card { position: fixed; z-index: 2; width: min(320px, calc(100vw - 32px)); padding: 18px;
             box-sizing: border-box; color: #f8fafc; background: #111827; border: 1px solid #374151;
             border-radius: 14px; box-shadow: 0 18px 48px #0005; pointer-events: auto; opacity: 0;
@@ -100,7 +106,8 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #94a3b8; font-size: 12px; }
           button { border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
           .back { color: #e2e8f0; background: #334155; } .next { color: #111827; background: #f8fafc; font-weight: 650; }
-          @media (prefers-reduced-motion: reduce) { .overlay-surface, .focus-ring, .card { transition-duration: 1ms !important; } }
+          @media (prefers-reduced-motion: reduce) { .overlay-surface, .focus-ring, .card {
+            transition-duration: 1ms !important; transition-delay: 0ms !important; } }
         </style>
         <div class="scene" data-phase="enter">
           <div class="overlay" aria-hidden="true"></div>
@@ -113,6 +120,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const scene = root.querySelector<HTMLElement>(".scene")!;
       scene.style.setProperty("--overlay-color", overlay?.color ?? "transparent");
       scene.style.setProperty("--overlay-opacity", String(overlay?.opacity ?? 0));
+      scene.style.setProperty("--overlay-delay", `${overlay?.delay ?? 0}ms`);
       scene.style.setProperty("--overlay-duration", `${overlay?.duration ?? 0}ms`);
       scene.style.setProperty("--highlight-radius", `${overlay?.borderRadius ?? 0}px`);
       root.querySelector("h2")!.textContent = presentation.title;
@@ -184,6 +192,7 @@ function resolveOverlayOptions(
     opacity: clamp(overrides.opacity ?? DEFAULT_OVERLAY.opacity, 0, 1),
     padding: Math.max(0, overrides.padding ?? DEFAULT_OVERLAY.padding),
     borderRadius: Math.max(0, overrides.borderRadius ?? DEFAULT_OVERLAY.borderRadius),
+    delay: Math.max(0, overrides.delay ?? DEFAULT_OVERLAY.delay),
     duration: Math.max(0, overrides.duration ?? DEFAULT_OVERLAY.duration),
   };
 }

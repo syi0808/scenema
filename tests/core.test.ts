@@ -29,7 +29,9 @@ class MemoryStore implements SessionStore {
   }
 }
 
-function createHarness(overrides: { actor?: Actor; matchedScene?: () => string } = {}) {
+function createHarness(
+  overrides: { actor?: Actor; matchedScene?: () => string; clickDelay?: number } = {},
+) {
   const store = new MemoryStore();
   const actor: Actor = overrides.actor ?? {
     moveTo: vi.fn(async () => undefined),
@@ -48,6 +50,7 @@ function createHarness(overrides: { actor?: Actor; matchedScene?: () => string }
     conditionWaiter: { waitFor: vi.fn(async () => undefined) },
     createId: () => "session-1",
     now: () => 100,
+    ...(overrides.clickDelay === undefined ? {} : { clickDelay: overrides.clickDelay }),
   });
   return { runtime, store, actor, presenter, setMatchedScene: (id: string) => (matchedScene = id) };
 }
@@ -145,6 +148,40 @@ describe("ScenarioRuntime", () => {
     });
     const arrivedWrite = store.writes.find(({ transition }) => transition?.status === "arrived");
     expect(arrivedWrite).toBeDefined();
+  });
+
+  it("waits before starting an automated click", async () => {
+    vi.useFakeTimers();
+    try {
+      const click = vi.fn(async () => undefined);
+      const { runtime } = createHarness({
+        actor: { moveTo: vi.fn(), click, type: vi.fn() },
+        clickDelay: 300,
+      });
+      const scenario = defineScenario({
+        id: "delayed-click",
+        version: 1,
+        scenes: [
+          {
+            id: "main",
+            match: {},
+            steps: [{ id: "click", target: "#target", commit: { click: true } }],
+          },
+        ],
+      });
+
+      await runtime.start(scenario);
+      const operation = runtime.proceed();
+
+      expect(click).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(299);
+      expect(click).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await operation;
+      expect(click).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("restores a presenting step and its cursor without replaying enter choreography", async () => {

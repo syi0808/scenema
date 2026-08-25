@@ -65,6 +65,7 @@ describe("createTourPresenter overlay", () => {
     expect(ring.style.cssText).toContain("top: 110px");
     expect(ring.style.cssText).toContain("width: 220px");
     expect(scene.style.getPropertyValue("--highlight-radius")).toBe("14px");
+    expect(scene.style.getPropertyValue("--overlay-delay")).toBe("240ms");
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
 
     presenter.dismiss();

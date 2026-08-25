@@ -22,6 +22,7 @@ export interface RuntimeOptions {
   conditionWaiter: ConditionWaiter;
   createId?: () => string;
   now?: () => number;
+  clickDelay?: number;
   defaultTransitionTimeout?: number;
   onError?: (error: ScenemaError, inspection: RuntimeInspection) => void;
   logger?: (message: string, context?: Record<string, unknown>) => void;
@@ -274,9 +275,7 @@ export class ScenarioRuntime {
     const commit = step.commit;
     if (!commit) return;
     if ("click" in commit) {
-      await this.options.actor.click(
-        commit.click === true ? this.requireTarget(step) : commit.click,
-      );
+      await this.click(commit.click === true ? this.requireTarget(step) : commit.click);
     } else {
       await this.options.actor.type(
         commit.type.target ?? this.requireTarget(step),
@@ -304,7 +303,7 @@ export class ScenarioRuntime {
       timeout: transition.timeout ?? this.options.defaultTransitionTimeout ?? 15_000,
     };
     this.persist("transition prepared");
-    await this.options.actor.click(target);
+    await this.click(target);
     if (
       !this.session ||
       this.session.id !== session.id ||
@@ -330,6 +329,14 @@ export class ScenarioRuntime {
     delete session.transition;
     this.persist("scenario complete");
     this.options.presenter.dismiss();
+  }
+
+  private async click(target: Target): Promise<void> {
+    const delay = Math.max(0, this.options.clickDelay ?? 0);
+    if (delay > 0) {
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, delay));
+    }
+    await this.options.actor.click(target);
   }
 
   private persist(message: string): void {
