@@ -4,6 +4,7 @@ import { createScenema, defineScenario, type Scenema } from "scenema";
 import "./styles.css";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
+const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
 let demoRuntime: Scenema | null = null;
 let overlayAnimation: OverlayAnimation = "iris";
 
@@ -13,7 +14,7 @@ const demoScenario = defineScenario({
   scenes: [
     {
       id: "projects",
-      match: { pathname: "/demo/projects", visible: "#project-list" },
+      match: { pathname: sitePath("/demo/projects"), visible: "#project-list" },
       steps: [
         {
           id: "create-project",
@@ -29,7 +30,7 @@ const demoScenario = defineScenario({
     },
     {
       id: "project-create",
-      match: { pathname: "/demo/projects/new", visible: "#project-form" },
+      match: { pathname: sitePath("/demo/projects/new"), visible: "#project-form" },
       steps: [
         {
           id: "project-name",
@@ -50,7 +51,10 @@ const demoScenario = defineScenario({
     },
     {
       id: "project-ready",
-      match: { pathname: "/demo/projects/launch-workspace", visible: "#project-ready" },
+      match: {
+        pathname: sitePath("/demo/projects/launch-workspace"),
+        visible: "#project-ready",
+      },
       steps: [
         {
           id: "complete",
@@ -69,11 +73,11 @@ function renderLanding(): void {
   app.innerHTML = `
     <header class="site-header">
       <div class="shell site-header__inner">
-        <a class="wordmark" href="/" data-route>Scenema</a>
+        <a class="wordmark" href="${sitePath("/")}" data-route>Scenema</a>
         <nav class="site-nav" aria-label="Primary navigation">
           <a href="#principles">Principles</a>
           <a href="#architecture">Architecture</a>
-          <a class="button button--small" href="/demo/projects" data-route>Run the demo</a>
+          <a class="button button--small" href="${sitePath("/demo/projects")}" data-route>Run the demo</a>
         </nav>
       </div>
     </header>
@@ -84,7 +88,7 @@ function renderLanding(): void {
           <h1>Guide people through the real product.</h1>
           <p class="hero__lead">Scenema runs declarative product tours on your application. People choose when to continue; Scenema moves, clicks, types, and survives navigation.</p>
           <div class="hero__actions">
-            <a class="button" href="/demo/projects" data-route>Run the live demo</a>
+            <a class="button" href="${sitePath("/demo/projects")}" data-route>Run the live demo</a>
             <a class="button button--secondary" href="#architecture">See how it works</a>
           </div>
         </div>
@@ -144,7 +148,7 @@ function renderLanding(): void {
       <section class="section">
         <div class="shell final-cta">
           <h2>See the runtime act on a real interface.</h2>
-          <a class="button" href="/demo/projects" data-route>Start the guided demo</a>
+          <a class="button" href="${sitePath("/demo/projects")}" data-route>Start the guided demo</a>
         </div>
       </section>
     </main>
@@ -157,7 +161,7 @@ function renderDemoShell(): void {
     <div class="demo-page">
       <header class="demo-header">
         <div class="shell demo-header__inner">
-          <a class="wordmark" href="/" data-route>Scenema</a>
+          <a class="wordmark" href="${sitePath("/")}" data-route>Scenema</a>
           <span class="demo-header__label">Live product demo</span>
           <div class="demo-header__actions">
             <label class="animation-picker">Overlay
@@ -166,12 +170,12 @@ function renderDemoShell(): void {
               </select>
             </label>
             <button class="text-button" id="reset-demo" type="button">Reset demo</button>
-            <a class="button button--small button--secondary" href="/" data-route>Exit demo</a>
+            <a class="button button--small button--secondary" href="${sitePath("/")}" data-route>Exit demo</a>
           </div>
         </div>
       </header>
       <main id="main" class="demo-layout">
-        <aside class="demo-sidebar"><strong>Northstar</strong><nav aria-label="Demo workspace"><a href="/demo/projects" data-demo-route aria-current="page">Projects</a></nav></aside>
+        <aside class="demo-sidebar"><strong>Northstar</strong><nav aria-label="Demo workspace"><a href="${sitePath("/demo/projects")}" data-demo-route aria-current="page">Projects</a></nav></aside>
         <section class="demo-workspace" id="demo-workspace"></section>
       </main>
       <p class="demo-status" id="demo-status" aria-live="polite">Loading demo…</p>
@@ -192,7 +196,7 @@ function renderDemoShell(): void {
 function renderDemoContent(): void {
   const workspace = document.querySelector<HTMLElement>("#demo-workspace");
   if (!workspace) return;
-  if (location.pathname === "/demo/projects/new") {
+  if (routePath() === "/demo/projects/new") {
     workspace.innerHTML = `
       <div class="workspace-header"><div><h1>New project</h1><p>Create a workspace for a new initiative.</p></div></div>
       <form class="form" id="project-form" novalidate>
@@ -220,7 +224,7 @@ function renderDemoContent(): void {
       ?.addEventListener("click", () => navigateDemo("/demo/projects"));
     return;
   }
-  if (location.pathname === "/demo/projects/launch-workspace") {
+  if (routePath() === "/demo/projects/launch-workspace") {
     workspace.innerHTML = `
       <div class="success-state" id="project-ready"><div class="success-state__mark" aria-hidden="true">✓</div><h1>Launch workspace is ready.</h1><p>The project was created through real DOM interactions while the scenario followed each route change.</p><button class="button button--secondary" id="return-projects" type="button">Return to projects</button></div>`;
     document.querySelector("#return-projects")?.addEventListener("click", resetDemo);
@@ -263,21 +267,21 @@ function restartDemoForOverlayComparison(): void {
   demoRuntime?.stop();
   demoRuntime?.dispose();
   demoRuntime = null;
-  history.replaceState(null, "", "/demo/projects");
+  history.replaceState(null, "", sitePath("/demo/projects"));
   renderDemoContent();
   setDemoStatus("Changing overlay animation…");
   void initializeDemo();
 }
 
 function navigateDemo(path: string): void {
-  history.pushState(null, "", path);
+  history.pushState(null, "", sitePath(path));
   renderDemoContent();
   if (demoRuntime?.inspect().session) queueMicrotask(() => void demoRuntime?.reconcile());
 }
 
 function resetDemo(): void {
   demoRuntime?.stop();
-  history.replaceState(null, "", "/demo/projects");
+  history.replaceState(null, "", sitePath("/demo/projects"));
   renderDemoContent();
   setDemoStatus("Demo reset. Start again when you choose.");
   addStartTourButton();
@@ -313,10 +317,11 @@ function setDemoStatus(message: string, error = false): void {
 }
 
 function route(): void {
-  const isDemo = location.pathname.startsWith("/demo");
+  const pathname = routePath();
+  const isDemo = pathname.startsWith("/demo");
   if (isDemo) {
-    if (location.pathname === "/demo" || location.pathname === "/demo/")
-      history.replaceState(null, "", "/demo/projects");
+    if (pathname === "/demo" || pathname === "/demo/")
+      history.replaceState(null, "", sitePath("/demo/projects"));
     if (demoRuntime) {
       renderDemoContent();
       if (demoRuntime.inspect().session) queueMicrotask(() => void demoRuntime?.reconcile());
@@ -336,7 +341,7 @@ document.addEventListener("click", (event) => {
   const link = (event.target as Element).closest<HTMLAnchorElement>("a[data-route]");
   if (!link || link.origin !== location.origin) return;
   event.preventDefault();
-  if (!link.pathname.startsWith("/demo") && demoRuntime) {
+  if (!routePath(link.pathname).startsWith("/demo") && demoRuntime) {
     demoRuntime.stop();
     demoRuntime.dispose();
     demoRuntime = null;
@@ -346,5 +351,16 @@ document.addEventListener("click", (event) => {
   window.scrollTo(0, 0);
 });
 window.addEventListener("popstate", route);
+
+function sitePath(path: string): string {
+  if (!basePrefix) return path;
+  return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
+}
+
+function routePath(path = location.pathname): string {
+  if (!basePrefix) return path;
+  if (path === basePrefix || path === `${basePrefix}/`) return "/";
+  return path.startsWith(`${basePrefix}/`) ? path.slice(basePrefix.length) : path;
+}
 
 route();

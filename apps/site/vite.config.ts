@@ -7,6 +7,7 @@ const workspace = (path: string) => fileURLToPath(new URL(`../../${path}`, impor
 
 export default defineConfig({
   root,
+  base: process.env.SCENEMA_BASE_PATH ?? "/",
   resolve: {
     alias: {
       "@scenema/core": workspace("packages/core/src/index.ts"),
