@@ -10,7 +10,6 @@ import {
 } from "@scenema/core";
 import {
   ActiveSessionPointer,
-  DomActor,
   DomConditionWaiter,
   DomSceneMatcher,
   LocalStorageSessionStore,
@@ -18,9 +17,13 @@ import {
   type NavigationObserver,
 } from "@scenema/runtime-web";
 
+import { ActorbleActorAdapter } from "./actor/actorble-adapter.js";
+import { createScenemaActorble, type ScenemaActorbleOptions } from "./actor/actorble.js";
+
 export interface ScenemaOptions {
   scenarios?: readonly ScenarioDefinition[];
   actor?: Actor;
+  actorble?: ScenemaActorbleOptions;
   presenter: Presenter;
   window?: Window;
   document?: Document;
@@ -45,6 +48,8 @@ export interface Scenema {
 export function createScenema(options: ScenemaOptions): Scenema {
   const window = options.window ?? globalThis.window;
   const document = options.document ?? window.document;
+  const actorble = options.actor ? undefined : createScenemaActorble(document, options.actorble);
+  const actor = options.actor ?? new ActorbleActorAdapter(actorble!);
   const registry = new Map<string, ScenarioDefinition>();
   for (const scenario of options.scenarios ?? []) registry.set(scenario.id, scenario);
 
@@ -71,7 +76,7 @@ export function createScenema(options: ScenemaOptions): Scenema {
     }, remaining);
   };
   runtime = new ScenarioRuntime({
-    actor: options.actor ?? new DomActor(document),
+    actor,
     presenter: options.presenter,
     sessionStore: store,
     sceneMatcher: new DomSceneMatcher({ window, document }),
@@ -153,6 +158,7 @@ export function createScenema(options: ScenemaOptions): Scenema {
       unsubscribe();
       navigation.dispose();
       if (transitionTimer !== undefined) window.clearTimeout(transitionTimer);
+      actorble?.destroy();
     },
   };
 }
@@ -170,3 +176,4 @@ function reportUnexpected(error: unknown, options: ScenemaOptions, runtime: Scen
 }
 
 export * from "@scenema/core";
+export type { ScenemaActorbleOptions } from "./actor/actorble.js";

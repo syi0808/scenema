@@ -17,6 +17,14 @@ beforeAll(async () => {
     })),
   });
   Element.prototype.scrollIntoView = vi.fn();
+  Element.prototype.getBoundingClientRect = vi.fn(() =>
+    DOMRect.fromRect({ x: 20, y: 20, width: 120, height: 32 }),
+  );
+  document.elementFromPoint = vi.fn(() => currentActorbleTarget());
+  document.elementsFromPoint = vi.fn(() => {
+    const target = currentActorbleTarget();
+    return target ? [target] : [];
+  });
   window.requestAnimationFrame = (callback: FrameRequestCallback) =>
     window.setTimeout(() => callback(0), 0);
   document.body.innerHTML =
@@ -24,6 +32,12 @@ beforeAll(async () => {
   history.replaceState(null, "", "/demo/projects");
   await import("../apps/site/src/main.ts");
 });
+
+function currentActorbleTarget(): Element | null {
+  if (location.pathname === "/demo/projects") return document.querySelector("#create-project");
+  const name = document.querySelector<HTMLInputElement>("#project-name");
+  return name?.value === "Launch workspace" ? document.querySelector("#submit-project") : name;
+}
 
 describe("landing demo", () => {
   it("runs the complete guided project scenario", async () => {

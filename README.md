@@ -45,7 +45,6 @@ Open `http://localhost:5173` for the landing page or `http://localhost:5173/demo
 ## Define a Scenario
 
 ```ts
-import { createActorbleActor } from "@scenema/actorble";
 import { createTourPresenter } from "@scenema/presenter";
 import { createScenema, defineScenario } from "scenema";
 
@@ -94,7 +93,6 @@ const onboarding = defineScenario({
 
 const scenema = createScenema({
   scenarios: [onboarding],
-  actor: createActorbleActor(actorble),
   presenter: createTourPresenter(),
 });
 
@@ -104,6 +102,8 @@ if (!(await scenema.bootstrap())) {
 ```
 
 Every document registers the same scenario and calls `bootstrap()`. If the current tab has an active session, Scenema restores it. Otherwise, `bootstrap()` returns `false` and the application can start a new session explicitly.
+
+Scenema creates an `@actorble/browser` instance by default and runs every interaction through its internal actor adapter. Actorble can be configured with the `actorble` option. Advanced integrations can still replace the internal boundary with a custom `Actor` through the `actor` option.
 
 ## How It Works
 
@@ -133,9 +133,8 @@ The runtime never relies on `beforeunload` for critical persistence. SPA route c
 | ---------------------- | ------------------------------------------------------------- |
 | `@scenema/core`        | Scenario DSL, validation, session codec, guided state machine |
 | `@scenema/runtime-web` | DOM matching, conditions, storage, navigation observation     |
-| `@scenema/actorble`    | Actorble-compatible actor adapter                             |
 | `@scenema/presenter`   | Accessible Shadow DOM tour presenter                          |
-| `scenema`              | Registry, bootstrap, lifecycle, and public API                |
+| `scenema`              | Actorble-backed runtime, registry, bootstrap, and public API  |
 
 ## Landing & Live Demo
 

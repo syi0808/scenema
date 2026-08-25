@@ -3,6 +3,13 @@
 Scenema runtime과 scenario session은 별개의 lifetime을 가진다. 모든 navigation은 다음 protocol을
 공유한다.
 
+## Actor Boundary
+
+Scenema는 기본적으로 `@actorble/browser`를 생성하고 내부 `ActorbleActorAdapter`를 통해 모든 UI action을
+실행한다. Core runtime은 `Actor` port만 알기 때문에 대체 구현을 주입할 수 있지만, public runtime의 기본
+구성과 lifecycle은 Actorble에 결합된다. Scenema가 생성한 Actorble instance는 runtime `dispose()` 시 함께
+정리된다.
+
 ```text
 checkpoint() -> perform() -> reconcile()
 ```

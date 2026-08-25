@@ -3,7 +3,6 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/runtime-web" },
-    { "path": "./packages/actor-actorble" },
     { "path": "./packages/presenter" },
     { "path": "./packages/scenema" }
   ]

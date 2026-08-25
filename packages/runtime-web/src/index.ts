@@ -1,4 +1,3 @@
-export { DomActor } from "./dom-actor.js";
 export {
   DomConditionWaiter,
   DomSceneMatcher,

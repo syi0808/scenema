@@ -45,12 +45,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/scenema
 
-  packages/actor-actorble:
-    dependencies:
-      '@scenema/core':
-        specifier: workspace:*
-        version: link:../core
-
   packages/core: {}
 
   packages/presenter:
@@ -67,6 +61,9 @@ importers:
 
   packages/scenema:
     dependencies:
+      '@actorble/browser':
+        specifier: ^0.0.1
+        version: 0.0.1
       '@scenema/core':
         specifier: workspace:*
         version: link:../core
@@ -75,6 +72,9 @@ importers:
         version: link:../runtime-web
 
 packages:
+
+  '@actorble/browser@0.0.1':
+    resolution: {integrity: sha512-kaLgjVX3xxOEWZHDLlZF9dAZ60amTwiw9fwk16zhlYwE9n6ZQ6oCcFQv5xVE9QBc4kotjwdFpyDPXQePKwWEFA==}
 
   '@asamuzakjp/css-color@6.0.7':
     resolution: {integrity: sha512-vC/bk1Lz7Tn/EfU9/apOTBk80/8dyGyWMowPoV1tJ52muDGsDqt2HPT2klrFUiY60MQmQv9q8yIht15JnBgDGw==}
@@ -1303,6 +1303,8 @@ packages:
     resolution: {integrity: sha512-vRD9nwt4L3aYpxNqeSC4WqLv58xrXef0Ong1Mc45CTXTIpvLafx7JO05sczmQZwdLEZvywrLOGdNC5+Rp5N1BQ==}
 
 snapshots:
+
+  '@actorble/browser@0.0.1': {}
 
   '@asamuzakjp/css-color@6.0.7':
     dependencies:

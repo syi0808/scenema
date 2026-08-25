@@ -1,5 +1,5 @@
 import { createTourPresenter } from "@scenema/presenter";
-import { createScenema, defineScenario, type Actor, type Scenema } from "scenema";
+import { createScenema, defineScenario, type Scenema } from "scenema";
 
 import "./styles.css";
 
@@ -62,57 +62,6 @@ const demoScenario = defineScenario({
     },
   ],
 });
-
-class DemoActor implements Actor {
-  private readonly cursor: HTMLElement;
-  private readonly reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  constructor() {
-    this.cursor = document.querySelector<HTMLElement>("#actor-cursor")!;
-  }
-
-  async moveTo(target: string): Promise<void> {
-    const element = this.resolve(target);
-    element.scrollIntoView({ block: "center", behavior: this.reduceMotion ? "auto" : "smooth" });
-    await nextFrame();
-    const rect = element.getBoundingClientRect();
-    this.cursor.style.setProperty("--cursor-x", `${rect.left + rect.width / 2}px`);
-    this.cursor.style.setProperty("--cursor-y", `${rect.top + rect.height / 2}px`);
-    this.cursor.dataset.visible = "true";
-    setDemoStatus(`Cursor moved to ${accessibleName(element)}.`);
-    if (!this.reduceMotion) await delay(540);
-  }
-
-  async click(target: string): Promise<void> {
-    await this.moveTo(target);
-    const element = this.resolve(target);
-    this.cursor.dataset.clicking = "true";
-    element.click();
-    setDemoStatus(`${accessibleName(element)} selected.`);
-    await delay(this.reduceMotion ? 0 : 120);
-    delete this.cursor.dataset.clicking;
-  }
-
-  async type(target: string, value: string): Promise<void> {
-    const element = this.resolve(target);
-    if (!(element instanceof HTMLInputElement) && !(element instanceof HTMLTextAreaElement)) {
-      throw new TypeError(`${target} does not accept text.`);
-    }
-    element.focus();
-    element.value = value;
-    element.dispatchEvent(
-      new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }),
-    );
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-    setDemoStatus(`Entered “${value}”.`);
-  }
-
-  private resolve(target: string): HTMLElement {
-    const element = document.querySelector<HTMLElement>(target);
-    if (!element) throw new Error(`Demo target not found: ${target}`);
-    return element;
-  }
-}
 
 function renderLanding(): void {
   document.title = "Scenema — Choreography for real products";
@@ -220,7 +169,6 @@ function renderDemoShell(): void {
         <section class="demo-workspace" id="demo-workspace"></section>
       </main>
       <p class="demo-status" id="demo-status" aria-live="polite">Loading demo…</p>
-      <div class="actor-cursor" id="actor-cursor" aria-hidden="true"></div>
     </div>`;
   document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
   document.querySelector("[data-demo-route]")?.addEventListener("click", (event) => {
@@ -278,7 +226,10 @@ function renderDemoContent(): void {
 async function initializeDemo(): Promise<void> {
   demoRuntime = createScenema({
     scenarios: [demoScenario],
-    actor: new DemoActor(),
+    actorble: {
+      feedback: "cursor",
+      motion: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    },
     presenter: createTourPresenter({ document }),
     onError(error) {
       setDemoStatus(`${error.message} Reset the demo and try again.`, true);
@@ -303,7 +254,6 @@ function resetDemo(): void {
   demoRuntime?.stop();
   history.replaceState(null, "", "/demo/projects");
   renderDemoContent();
-  document.querySelector("#actor-cursor")?.setAttribute("data-visible", "false");
   setDemoStatus("Demo reset. Start again when you choose.");
   addStartTourButton();
 }
@@ -371,17 +321,5 @@ document.addEventListener("click", (event) => {
   window.scrollTo(0, 0);
 });
 window.addEventListener("popstate", route);
-
-function accessibleName(element: HTMLElement): string {
-  return element.getAttribute("aria-label") ?? element.textContent?.trim() ?? element.id;
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-}
-
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
 
 route();

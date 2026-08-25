@@ -221,7 +221,11 @@ export class ScenarioRuntime {
       canPrevious: index > 0,
       ...(step.target ? { target: step.target } : {}),
       controls: {
-        proceed: () => void this.proceed(),
+        proceed: () => {
+          const operation = this.operation;
+          if (operation) void operation.then(() => this.proceed());
+          else void this.proceed();
+        },
         previous: () => void this.previous(),
         stop: () => this.stop(),
       },
