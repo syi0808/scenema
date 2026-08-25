@@ -9,8 +9,11 @@ describe("Scenema Actorble defaults", () => {
     const options = resolveScenemaActorbleOptions(document);
 
     expect(options.actionDefaults).toEqual({
-      moveTo: { duration: 800 },
-      click: { duration: 800, pressDwell: 180 },
+      moveTo: { motion: { kind: "ease", timing: "ease-in-out", duration: 800 } },
+      click: {
+        motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
+        pressDwell: 240,
+      },
       typeInto: { delay: 100 },
     });
   });
@@ -26,8 +29,19 @@ describe("Scenema Actorble defaults", () => {
 
     expect(options.actionDefaults).toEqual({
       moveTo: { duration: 300 },
-      click: { duration: 800, pressDwell: 50 },
+      click: {
+        motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
+        pressDwell: 50,
+      },
       typeInto: { delay: 20 },
     });
+  });
+
+  it("replaces the click motion profile with a duration override", () => {
+    const options = resolveScenemaActorbleOptions(document, {
+      actionDefaults: { click: { duration: 400 } },
+    });
+
+    expect(options.actionDefaults?.click).toEqual({ duration: 400, pressDwell: 240 });
   });
 });
