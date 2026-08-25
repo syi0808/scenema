@@ -224,11 +224,13 @@ function renderDemoContent(): void {
 }
 
 async function initializeDemo(): Promise<void> {
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   demoRuntime = createScenema({
     scenarios: [demoScenario],
     actorble: {
       feedback: "cursor",
-      motion: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      motion: !reduceMotion,
+      ...(reduceMotion ? { actionDefaults: { typeInto: { delay: 0 } } } : {}),
     },
     presenter: createTourPresenter({ document }),
     onError(error) {

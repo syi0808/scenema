@@ -105,6 +105,8 @@ Every document registers the same scenario and calls `bootstrap()`. If the curre
 
 Scenema creates an `@actorble/browser` instance by default and runs every interaction through its internal actor adapter. Actorble can be configured with the `actorble` option. Advanced integrations can still replace the internal boundary with a custom `Actor` through the `actor` option.
 
+The built-in choreography uses perceptible pacing by default: pointer movement takes `800ms`, a click holds for `180ms`, and typing waits `100ms` between characters. Override individual values through `actorble.actionDefaults`, or set `actorble.motion` to `false` when pointer motion should be disabled.
+
 ## How It Works
 
 ```text
