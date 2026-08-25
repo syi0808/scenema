@@ -1,9 +1,6 @@
 import type { Presenter, PresenterContext, StepPresentation } from "@scenema/core";
 
-export type OverlayAnimation = "fade" | "iris";
-
 export interface TourOverlayOptions {
-  animation?: OverlayAnimation;
   color?: string;
   opacity?: number;
   padding?: number;
@@ -19,7 +16,6 @@ export interface TourPresenterOptions {
 }
 
 interface ResolvedOverlayOptions {
-  animation: OverlayAnimation;
   color: string;
   opacity: number;
   padding: number;
@@ -37,12 +33,9 @@ interface OverlayRect {
 
 interface OverlayController {
   update(target: Element | null): void;
-  enter(): void;
-  exit(): void;
 }
 
 const DEFAULT_OVERLAY: ResolvedOverlayOptions = {
-  animation: "fade",
   color: "#020617",
   opacity: 0.72,
   padding: 8,
@@ -55,7 +48,6 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
   const overlay = resolveOverlayOptions(options.overlay);
   let host: HTMLElement | null = null;
   let removePositionListeners = () => {};
-  let exitOverlay = () => {};
 
   const dismiss = () => {
     removePositionListeners();
@@ -69,8 +61,6 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
     exitingHost.shadowRoot
       ?.querySelector<HTMLElement>(".scene")
       ?.setAttribute("data-phase", "exit");
-    exitOverlay();
-    exitOverlay = () => {};
     const remove = () => exitingHost.remove();
     const view = document.defaultView;
     if (!view || !overlay || overlay.duration === 0) remove();
@@ -90,19 +80,13 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .overlay-svg { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; }
           .overlay-surface { fill: var(--overlay-color); opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
-          .scene[data-phase="active"] .overlay-surface,
-          .scene[data-animation="iris"][data-has-target="true"] .overlay-surface {
-            opacity: var(--overlay-opacity); }
+          .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity); }
           .focus-ring { position: fixed; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
             border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #0f172a66, 0 0 24px #fff3;
             opacity: 0; transform: scale(.96); transition: opacity var(--overlay-duration) ease,
             transform var(--overlay-duration) cubic-bezier(.22, 1, .36, 1); }
           .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1); }
           .scene[data-phase="exit"] .overlay-surface,
-          .scene[data-animation="iris"][data-has-target="true"][data-phase="exit"] .overlay-surface {
-            opacity: var(--overlay-opacity); }
-          .scene[data-animation="fade"][data-phase="exit"] .overlay-surface,
-          .scene[data-has-target="false"][data-phase="exit"] .overlay-surface,
           .scene[data-phase="exit"] .focus-ring, .scene[data-phase="exit"] .card { opacity: 0; }
           .card { position: fixed; z-index: 2; width: min(320px, calc(100vw - 32px)); padding: 18px;
             box-sizing: border-box; color: #f8fafc; background: #111827; border: 1px solid #374151;
@@ -115,7 +99,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .back { color: #e2e8f0; background: #334155; } .next { color: #111827; background: #f8fafc; font-weight: 650; }
           @media (prefers-reduced-motion: reduce) { .overlay-surface, .focus-ring, .card { transition-duration: 1ms !important; } }
         </style>
-        <div class="scene" data-phase="enter" data-animation="${overlay?.animation ?? "fade"}">
+        <div class="scene" data-phase="enter">
           <div class="overlay" aria-hidden="true"></div>
           <section class="card" role="dialog" aria-live="polite" aria-labelledby="scenema-title">
             <h2 id="scenema-title"></h2><p></p><footer><span class="progress"></span>
@@ -149,7 +133,6 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const overlayController = overlay
         ? createOverlayController(overlayRoot, scene, document, overlay)
         : null;
-      exitOverlay = () => overlayController?.exit();
       const updatePosition = () => {
         const target = context.target ? document.querySelector(context.target) : null;
         positionCard(card, target, document);
@@ -165,7 +148,6 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       scheduleFrame(document, () => {
         if (scene.dataset.phase !== "enter") return;
         scene.setAttribute("data-phase", "active");
-        overlayController?.enter();
       });
       next.focus();
     },
@@ -179,7 +161,6 @@ function resolveOverlayOptions(
   if (options === false) return null;
   const overrides = options === true || options === undefined ? {} : options;
   return {
-    animation: overrides.animation ?? DEFAULT_OVERLAY.animation,
     color: overrides.color ?? DEFAULT_OVERLAY.color,
     opacity: clamp(overrides.opacity ?? DEFAULT_OVERLAY.opacity, 0, 1),
     padding: Math.max(0, overrides.padding ?? DEFAULT_OVERLAY.padding),
@@ -227,11 +208,7 @@ function createOverlayController(
   const hole = root.querySelector<SVGRectElement>(".mask-hole")!;
   const surface = root.querySelector<SVGRectElement>(".overlay-surface")!;
   const ring = root.querySelector<HTMLElement>(".focus-ring")!;
-  const duration = prefersReducedMotion(document) ? 0 : options.duration;
   let viewport = viewportSize(document);
-  let highlight: OverlayRect | null = null;
-  let entered = false;
-  let cancelAnimation = () => {};
 
   const setViewport = () => {
     viewport = viewportSize(document);
@@ -246,9 +223,8 @@ function createOverlayController(
 
   return {
     update(target) {
-      cancelAnimation();
       setViewport();
-      highlight = target ? targetOverlayRect(target, viewport, options) : null;
+      const highlight = target ? targetOverlayRect(target, viewport, options) : null;
       scene.dataset.hasTarget = String(Boolean(highlight));
       ring.hidden = !highlight;
       if (!highlight) {
@@ -256,33 +232,7 @@ function createOverlayController(
         return;
       }
       setElementRect(ring, highlight.x, highlight.y, highlight.width, highlight.height);
-      setSvgRect(hole, entered ? highlight : expandedRect(viewport));
-    },
-    enter() {
-      entered = true;
-      if (!highlight) return;
-      if (options.animation === "iris") {
-        cancelAnimation = animateSvgRect(
-          hole,
-          expandedRect(viewport),
-          highlight,
-          duration,
-          document,
-        );
-      } else {
-        setSvgRect(hole, highlight);
-      }
-    },
-    exit() {
-      cancelAnimation();
-      if (options.animation !== "iris" || !highlight) return;
-      cancelAnimation = animateSvgRect(
-        hole,
-        readSvgRect(hole),
-        expandedRect(viewport),
-        duration,
-        document,
-      );
+      setSvgRect(hole, highlight);
     },
   };
 }
@@ -304,10 +254,6 @@ function targetOverlayRect(
     height: bottom - y,
     radius: options.borderRadius,
   };
-}
-
-function expandedRect(viewport: { width: number; height: number }): OverlayRect {
-  return { x: -2, y: -2, width: viewport.width + 4, height: viewport.height + 4, radius: 0 };
 }
 
 function collapsedRect(viewport: { width: number; height: number }): OverlayRect {
@@ -335,57 +281,6 @@ function setSvgRect(element: SVGRectElement, rect: OverlayRect): void {
   element.setAttribute("rx", String(Math.min(rect.radius, rect.width / 2, rect.height / 2)));
 }
 
-function readSvgRect(element: SVGRectElement): OverlayRect {
-  return {
-    x: Number(element.getAttribute("x")),
-    y: Number(element.getAttribute("y")),
-    width: Number(element.getAttribute("width")),
-    height: Number(element.getAttribute("height")),
-    radius: Number(element.getAttribute("rx")),
-  };
-}
-
-function animateSvgRect(
-  element: SVGRectElement,
-  from: OverlayRect,
-  to: OverlayRect,
-  duration: number,
-  document: Document,
-): () => void {
-  const view = document.defaultView;
-  if (!view?.requestAnimationFrame || duration === 0) {
-    setSvgRect(element, to);
-    return () => {};
-  }
-
-  let frame = 0;
-  let cancelled = false;
-  const startedAt = view.performance.now();
-  const tick = (timestamp: number) => {
-    if (cancelled) return;
-    const progress = clamp((timestamp - startedAt) / duration, 0, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    setSvgRect(element, interpolateRect(from, to, eased));
-    if (progress < 1) frame = view.requestAnimationFrame(tick);
-  };
-  frame = view.requestAnimationFrame(tick);
-  return () => {
-    cancelled = true;
-    view.cancelAnimationFrame(frame);
-  };
-}
-
-function interpolateRect(from: OverlayRect, to: OverlayRect, progress: number): OverlayRect {
-  const interpolate = (start: number, end: number) => start + (end - start) * progress;
-  return {
-    x: interpolate(from.x, to.x),
-    y: interpolate(from.y, to.y),
-    width: interpolate(from.width, to.width),
-    height: interpolate(from.height, to.height),
-    radius: interpolate(from.radius, to.radius),
-  };
-}
-
 function viewportSize(document: Document): { width: number; height: number } {
   return {
     width: document.defaultView?.innerWidth ?? document.documentElement.clientWidth,
@@ -397,10 +292,6 @@ function scheduleFrame(document: Document, callback: () => void): void {
   const view = document.defaultView;
   if (view?.requestAnimationFrame) view.requestAnimationFrame(() => callback());
   else view?.setTimeout(callback, 0);
-}
-
-function prefersReducedMotion(document: Document): boolean {
-  return document.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

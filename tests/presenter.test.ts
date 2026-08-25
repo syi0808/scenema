@@ -29,10 +29,10 @@ afterEach(() => {
 });
 
 describe("createTourPresenter overlay", () => {
-  it("builds an iris highlight around the current target", () => {
+  it("builds a single masked highlight around the current target", () => {
     const presenter = createTourPresenter({
       document,
-      overlay: { animation: "iris", padding: 10, borderRadius: 14, duration: 240 },
+      overlay: { padding: 10, borderRadius: 14, duration: 240 },
     });
 
     presenter.present(
@@ -52,7 +52,7 @@ describe("createTourPresenter overlay", () => {
     const scene = host.shadowRoot!.querySelector<HTMLElement>(".scene")!;
     const ring = host.shadowRoot!.querySelector<HTMLElement>(".focus-ring")!;
     const hole = host.shadowRoot!.querySelector<SVGRectElement>(".mask-hole")!;
-    expect(scene.dataset).toMatchObject({ animation: "iris", phase: "active" });
+    expect(scene.dataset.phase).toBe("active");
     expect(host.shadowRoot!.querySelectorAll(".overlay-surface")).toHaveLength(1);
     expect(host.shadowRoot!.querySelectorAll('[class^="shade"]')).toHaveLength(0);
     expect(hole.getAttribute("x")).toBe("90");
@@ -68,15 +68,13 @@ describe("createTourPresenter overlay", () => {
     presenter.dismiss();
     expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull();
     expect(scene.dataset.phase).toBe("exit");
-    expect(hole.getAttribute("x")).toBe("-2");
-    expect(hole.getAttribute("width")).toBe(String(window.innerWidth + 4));
     expect(host.isConnected).toBe(true);
     vi.advanceTimersByTime(240);
     expect(host.isConnected).toBe(false);
   });
 
   it("uses a fading full-screen overlay when a step has no target", () => {
-    const presenter = createTourPresenter({ document, overlay: { animation: "fade" } });
+    const presenter = createTourPresenter({ document });
 
     presenter.present(
       { title: "Finished" },
@@ -93,7 +91,6 @@ describe("createTourPresenter overlay", () => {
     const root = document.querySelector<HTMLElement>(
       '[data-scenema-presenter="tour"]',
     )!.shadowRoot!;
-    expect(root.querySelector<HTMLElement>(".scene")!.dataset.animation).toBe("fade");
     expect(root.querySelector(".overlay-surface")).not.toBeNull();
     expect(root.querySelector<HTMLElement>(".focus-ring")!.hidden).toBe(true);
   });

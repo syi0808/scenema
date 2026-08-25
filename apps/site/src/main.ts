@@ -1,4 +1,4 @@
-import { createTourPresenter, type OverlayAnimation } from "@scenema/presenter";
+import { createTourPresenter } from "@scenema/presenter";
 import { createScenema, defineScenario, type Scenema } from "scenema";
 
 import "./styles.css";
@@ -6,7 +6,6 @@ import "./styles.css";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
 let demoRuntime: Scenema | null = null;
-let overlayAnimation: OverlayAnimation = "iris";
 
 const demoScenario = defineScenario({
   id: "create-project-demo",
@@ -164,11 +163,6 @@ function renderDemoShell(): void {
           <a class="wordmark" href="${sitePath("/")}" data-route>Scenema</a>
           <span class="demo-header__label">Live product demo</span>
           <div class="demo-header__actions">
-            <label class="animation-picker">Overlay
-              <select id="overlay-animation" aria-label="Overlay animation">
-                <option value="iris">Iris</option><option value="fade">Fade</option>
-              </select>
-            </label>
             <button class="text-button" id="reset-demo" type="button">Reset demo</button>
             <a class="button button--small button--secondary" href="${sitePath("/")}" data-route>Exit demo</a>
           </div>
@@ -181,11 +175,6 @@ function renderDemoShell(): void {
       <p class="demo-status" id="demo-status" aria-live="polite">Loading demo…</p>
     </div>`;
   document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
-  document.querySelector("#overlay-animation")?.addEventListener("change", (event) => {
-    const value = (event.currentTarget as HTMLSelectElement).value;
-    overlayAnimation = value === "fade" ? "fade" : "iris";
-    restartDemoForOverlayComparison();
-  });
   document.querySelector("[data-demo-route]")?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateDemo("/demo/projects");
@@ -247,7 +236,7 @@ async function initializeDemo(): Promise<void> {
       motion: !reduceMotion,
       ...(reduceMotion ? { actionDefaults: { typeInto: { delay: 0 } } } : {}),
     },
-    presenter: createTourPresenter({ document, overlay: { animation: overlayAnimation } }),
+    presenter: createTourPresenter({ document }),
     onError(error) {
       setDemoStatus(`${error.message} Reset the demo and try again.`, true);
     },
@@ -257,20 +246,8 @@ async function initializeDemo(): Promise<void> {
     setDemoStatus("Your guided demo resumed.");
     return;
   }
-  setDemoStatus(
-    `${overlayAnimation === "iris" ? "Iris" : "Fade"} overlay ready. Start when you choose.`,
-  );
+  setDemoStatus("Demo ready. Start when you choose.");
   addStartTourButton();
-}
-
-function restartDemoForOverlayComparison(): void {
-  demoRuntime?.stop();
-  demoRuntime?.dispose();
-  demoRuntime = null;
-  history.replaceState(null, "", sitePath("/demo/projects"));
-  renderDemoContent();
-  setDemoStatus("Changing overlay animation…");
-  void initializeDemo();
 }
 
 function navigateDemo(path: string): void {
