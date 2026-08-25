@@ -72,7 +72,9 @@ export function createScenema(options: ScenemaOptions): Scenema {
     );
     transitionTimer = window.setTimeout(() => {
       transitionTimer = undefined;
-      void runtime.reconcile().catch((error: unknown) => reportUnexpected(error, options, runtime));
+      void runtime
+        .reconcile()
+        .catch((error: unknown) => reportRuntimeOperationError(error, options, runtime));
     }, remaining);
   };
   runtime = new ScenarioRuntime({
@@ -91,11 +93,17 @@ export function createScenema(options: ScenemaOptions): Scenema {
       else activeSession.set(session.id);
       scheduleTransitionTimeout(session);
     },
+    onSessionStop() {
+      activeSession.clear();
+      scheduleTransitionTimeout(null);
+    },
   });
   const navigation: NavigationObserver = createNavigationObserver(window);
   const unsubscribe = navigation.subscribe(() => {
     if (!runtime.inspect().session) return;
-    void runtime.reconcile().catch((error: unknown) => reportUnexpected(error, options, runtime));
+    void runtime
+      .reconcile()
+      .catch((error: unknown) => reportRuntimeOperationError(error, options, runtime));
   });
 
   return {
@@ -161,6 +169,14 @@ export function createScenema(options: ScenemaOptions): Scenema {
       actorble?.destroy();
     },
   };
+}
+
+function reportRuntimeOperationError(
+  error: unknown,
+  options: ScenemaOptions,
+  runtime: ScenarioRuntime,
+): void {
+  if (!(error instanceof ScenemaError)) reportUnexpected(error, options, runtime);
 }
 
 function reportUnexpected(error: unknown, options: ScenemaOptions, runtime: ScenarioRuntime): void {

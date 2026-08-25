@@ -99,6 +99,7 @@ export interface PresenterContext {
   stepNumber: number;
   totalSteps: number;
   canPrevious: boolean;
+  interaction: "locked" | "passthrough";
   target?: Target;
   controls: PresenterControls;
 }

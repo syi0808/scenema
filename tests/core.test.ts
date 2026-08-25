@@ -79,6 +79,10 @@ describe("ScenarioRuntime", () => {
     await runtime.start(scenario);
     expect(actor.moveTo).toHaveBeenCalledWith("#name");
     expect(presenter.present).toHaveBeenCalledOnce();
+    expect(presenter.present).toHaveBeenCalledWith(
+      { title: "Name it" },
+      expect.objectContaining({ interaction: "locked" }),
+    );
     expect(runtime.inspect().currentPhase).toBe("present");
 
     await runtime.proceed();
@@ -166,6 +170,29 @@ describe("ScenarioRuntime", () => {
     expect(second.actor.moveTo).not.toHaveBeenCalled();
     expect(second.presenter.present).toHaveBeenCalledOnce();
     expect(second.runtime.inspect().currentPhase).toBe("present");
+  });
+
+  it("stops and removes the session when the document leaves the current scene", async () => {
+    const scenario = defineScenario({
+      id: "drift",
+      version: 1,
+      scenes: [
+        {
+          id: "main",
+          match: {},
+          steps: [{ id: "one", present: { title: "One" } }],
+        },
+      ],
+    });
+    const { runtime, store, setMatchedScene, presenter } = createHarness();
+    await runtime.start(scenario);
+    setMatchedScene("elsewhere");
+
+    await expect(runtime.reconcile()).rejects.toMatchObject({ code: "SCENE_NOT_FOUND" });
+
+    expect(runtime.inspect().session).toBeNull();
+    expect(store.sessions.size).toBe(0);
+    expect(presenter.dismiss).toHaveBeenCalled();
   });
 
   it("uses the persisted absolute start time for transition timeouts", async () => {

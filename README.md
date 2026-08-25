@@ -122,6 +122,10 @@ createTourPresenter({
 
 Set `overlay: false` to keep the card without dimming or highlighting.
 
+While a step has a `commit` or `transition`, the tour presenter makes the application inert until
+the user proceeds. This prevents pointer, keyboard, and focus interactions from racing ahead of the
+runtime. Informational steps without an automated action remain interactive.
+
 ## How It Works
 
 ```text

@@ -90,6 +90,37 @@ describe("DOM runtime primitives", () => {
 });
 
 describe("document-lifetime recovery", () => {
+  it("clears a drifted session after unexpected navigation", async () => {
+    history.replaceState(null, "", "/page-a");
+    const scenario = defineScenario({
+      id: "drift",
+      version: 1,
+      scenes: [
+        {
+          id: "a",
+          match: { pathname: "/page-a" },
+          steps: [{ id: "stay", present: { title: "Stay" } }],
+        },
+      ],
+    });
+    const onError = vi.fn();
+    const runtime = createScenema({
+      scenarios: [scenario],
+      presenter: { present: vi.fn(), dismiss: vi.fn() },
+      actor: { moveTo: vi.fn(), click: vi.fn(), type: vi.fn() },
+      onError,
+    });
+    const session = await runtime.start("drift");
+
+    history.pushState(null, "", "/outside");
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
+
+    expect(runtime.inspect().session).toBeNull();
+    expect(sessionStorage.getItem(ACTIVE_SESSION_KEY)).toBeNull();
+    expect(new LocalStorageSessionStore(localStorage).read(session.id)).toBeNull();
+    runtime.dispose();
+  });
+
   it("bootstraps a prepared transition in a new runtime", async () => {
     history.replaceState(null, "", "/page-a");
     document.body.innerHTML = '<button id="next">Next</button>';

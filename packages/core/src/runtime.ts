@@ -26,6 +26,7 @@ export interface RuntimeOptions {
   onError?: (error: ScenemaError, inspection: RuntimeInspection) => void;
   logger?: (message: string, context?: Record<string, unknown>) => void;
   onSessionChange?: (session: ScenarioSession) => void;
+  onSessionStop?: () => void;
 }
 
 export class ScenarioRuntime {
@@ -129,7 +130,10 @@ export class ScenarioRuntime {
 
   stop(): void {
     this.options.presenter.dismiss();
-    if (this.session) this.options.sessionStore.remove(this.session.id);
+    if (this.session) {
+      this.options.sessionStore.remove(this.session.id);
+      this.options.onSessionStop?.();
+    }
     this.session = null;
     this.scenario = null;
     this.log("session stopped");
@@ -141,7 +145,7 @@ export class ScenarioRuntime {
     if (session.phase !== "transition" || !transition) {
       const scene = this.requireScene(session.sceneId);
       if (!(await this.options.sceneMatcher.matches(scene))) {
-        return this.fail(
+        return this.abort(
           "SCENE_NOT_FOUND",
           `Scene ${scene.id} no longer matches the current document.`,
         );
@@ -219,6 +223,7 @@ export class ScenarioRuntime {
       stepNumber: scenarioIndex + 1,
       totalSteps: allSteps.length,
       canPrevious: index > 0,
+      interaction: step.commit || step.transition ? "locked" : "passthrough",
       ...(step.target ? { target: step.target } : {}),
       controls: {
         proceed: () => {
@@ -367,6 +372,14 @@ export class ScenarioRuntime {
   ): never {
     const error = new ScenemaError(code, message, context);
     this.options.onError?.(error, this.inspect());
+    throw error;
+  }
+
+  private abort(code: ScenemaError["code"], message: string): never {
+    const error = new ScenemaError(code, message);
+    const inspection = this.inspect();
+    this.stop();
+    this.options.onError?.(error, inspection);
     throw error;
   }
 

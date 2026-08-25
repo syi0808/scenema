@@ -48,10 +48,13 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
   const overlay = resolveOverlayOptions(options.overlay);
   let host: HTMLElement | null = null;
   let removePositionListeners = () => {};
+  let releaseInteractionLock = () => {};
 
   const dismiss = () => {
     removePositionListeners();
     removePositionListeners = () => {};
+    releaseInteractionLock();
+    releaseInteractionLock = () => {};
     const exitingHost = host;
     host = null;
     if (!exitingHost) return;
@@ -127,6 +130,9 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
         options.nextLabel ?? (context.stepNumber === context.totalSteps ? "Finish" : "Next");
       next.addEventListener("click", context.controls.proceed);
       document.body.append(host);
+      if (context.interaction === "locked") {
+        releaseInteractionLock = lockDocumentInteraction(document, host);
+      }
 
       const card = root.querySelector<HTMLElement>(".card")!;
       const overlayRoot = root.querySelector<HTMLElement>(".overlay")!;
@@ -152,6 +158,19 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       next.focus();
     },
     dismiss,
+  };
+}
+
+function lockDocumentInteraction(document: Document, host: HTMLElement): () => void {
+  const siblings = Array.from(document.body.children).filter(
+    (element): element is HTMLElement => element instanceof HTMLElement && element !== host,
+  );
+  const initiallyInert = new Set(siblings.filter((element) => element.hasAttribute("inert")));
+  for (const element of siblings) element.setAttribute("inert", "");
+  return () => {
+    for (const element of siblings) {
+      if (!initiallyInert.has(element)) element.removeAttribute("inert");
+    }
   };
 }
 

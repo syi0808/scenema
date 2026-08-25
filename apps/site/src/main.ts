@@ -253,7 +253,9 @@ async function initializeDemo(): Promise<void> {
 function navigateDemo(path: string): void {
   history.pushState(null, "", sitePath(path));
   renderDemoContent();
-  if (demoRuntime?.inspect().session) queueMicrotask(() => void demoRuntime?.reconcile());
+  if (demoRuntime?.inspect().session) {
+    queueMicrotask(() => void demoRuntime?.reconcile().catch(() => undefined));
+  }
 }
 
 function resetDemo(): void {
@@ -301,7 +303,9 @@ function route(): void {
       history.replaceState(null, "", sitePath("/demo/projects"));
     if (demoRuntime) {
       renderDemoContent();
-      if (demoRuntime.inspect().session) queueMicrotask(() => void demoRuntime?.reconcile());
+      if (demoRuntime.inspect().session) {
+        queueMicrotask(() => void demoRuntime?.reconcile().catch(() => undefined));
+      }
       return;
     }
     renderDemoShell();

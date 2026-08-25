@@ -43,6 +43,7 @@ describe("createTourPresenter overlay", () => {
         stepNumber: 1,
         totalSteps: 2,
         canPrevious: false,
+        interaction: "locked",
         target: "#target",
         controls,
       },
@@ -64,8 +65,10 @@ describe("createTourPresenter overlay", () => {
     expect(ring.style.cssText).toContain("top: 110px");
     expect(ring.style.cssText).toContain("width: 220px");
     expect(scene.style.getPropertyValue("--highlight-radius")).toBe("14px");
+    expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
 
     presenter.dismiss();
+    expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(false);
     expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull();
     expect(scene.dataset.phase).toBe("exit");
     expect(host.isConnected).toBe(true);
@@ -84,6 +87,7 @@ describe("createTourPresenter overlay", () => {
         stepNumber: 2,
         totalSteps: 2,
         canPrevious: true,
+        interaction: "passthrough",
         controls,
       },
     );
@@ -93,5 +97,27 @@ describe("createTourPresenter overlay", () => {
     )!.shadowRoot!;
     expect(root.querySelector(".overlay-surface")).not.toBeNull();
     expect(root.querySelector<HTMLElement>(".focus-ring")!.hidden).toBe(true);
+    expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(false);
+  });
+
+  it("preserves application inert state when releasing the interaction lock", () => {
+    document.querySelector("#target")!.setAttribute("inert", "");
+    const presenter = createTourPresenter({ document, overlay: false });
+
+    presenter.present(
+      { title: "Locked" },
+      {
+        sceneId: "projects",
+        stepId: "create",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "locked",
+        controls,
+      },
+    );
+    presenter.dismiss();
+
+    expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
   });
 });
