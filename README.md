@@ -107,6 +107,22 @@ Scenema creates an `@actorble/browser` instance by default and runs every intera
 
 The built-in choreography uses perceptible pacing by default: pointer movement takes `800ms`, a click holds for `180ms`, and typing waits `100ms` between characters. Override individual values through `actorble.actionDefaults`, or set `actorble.motion` to `false` when pointer motion should be disabled.
 
+The tour presenter highlights the current target with a dimmed overlay. Because the runtime dismisses the presenter before Actorble moves and presents the next step only after the cursor arrives, the overlay opens while the cursor is in motion and closes smoothly around the target when it stops. Choose a simple fade or an iris motion that travels inward from the viewport edges:
+
+```ts
+createTourPresenter({
+  overlay: {
+    animation: "iris", // or "fade"
+    duration: 320,
+    opacity: 0.72,
+    padding: 8,
+    borderRadius: 10,
+  },
+});
+```
+
+Set `overlay: false` to keep the card without dimming or highlighting. The live demo includes an Overlay selector so both animations can be compared without changing code.
+
 ## How It Works
 
 ```text

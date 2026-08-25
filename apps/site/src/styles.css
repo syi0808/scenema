@@ -351,6 +351,22 @@ pre {
   gap: 10px;
   margin-left: auto;
 }
+.animation-picker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.animation-picker select {
+  min-height: 36px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+}
 .text-button {
   min-height: 40px;
   padding: 0 8px;
@@ -600,6 +616,19 @@ pre {
   }
   .demo-header__label {
     display: none;
+  }
+  .demo-header__actions {
+    gap: 4px;
+  }
+  .animation-picker {
+    gap: 0;
+    font-size: 0;
+  }
+  .animation-picker select {
+    width: 68px;
+    min-height: 34px;
+    padding-inline: 7px;
+    font-size: 12px;
   }
   .demo-workspace {
     padding: 24px 18px;
