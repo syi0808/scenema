@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { resolveScenemaActorbleOptions } from "../packages/scenema/src/actor/actorble.js";
+import {
+  resolveScenemaActorbleOptions,
+  SCENEMA_ACTORBLE_CURSOR_SCALE,
+} from "../packages/scenema/src/actor/actorble.js";
 
 describe("Scenema Actorble defaults", () => {
   it("uses deliberate motion, click, and typing durations", () => {
@@ -16,6 +19,35 @@ describe("Scenema Actorble defaults", () => {
       },
       typeInto: { delay: 100 },
     });
+  });
+
+  it("uses a larger cursor by default", () => {
+    const options = resolveScenemaActorbleOptions(document, {
+      feedback: { cursor: true, keystroke: true, text: "masked" },
+    });
+
+    expect(options.visualLayer).toMatchObject({
+      options: {
+        cursorScale: SCENEMA_ACTORBLE_CURSOR_SCALE,
+        textVisibility: "masked",
+      },
+    });
+  });
+
+  it("preserves a custom visual layer", () => {
+    const visualLayer = {
+      showCursor: vi.fn(),
+      highlightTarget: vi.fn(),
+      showClick: vi.fn(),
+      showFocus: vi.fn(),
+      showTyping: vi.fn(),
+      showKeystroke: vi.fn(),
+      clearFeedback: vi.fn(),
+      hide: vi.fn(),
+      destroy: vi.fn(),
+    };
+
+    expect(resolveScenemaActorbleOptions(document, { visualLayer }).visualLayer).toBe(visualLayer);
   });
 
   it("allows individual defaults to be overridden", () => {

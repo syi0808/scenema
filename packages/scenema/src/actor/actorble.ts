@@ -2,10 +2,13 @@ import {
   createActorble,
   type Actorble,
   type ActorbleFacadeOptions,
+  BrowserVisualLayer,
   type BrowserActionDefaults,
 } from "@actorble/browser";
 
 export type ScenemaActorbleOptions = ActorbleFacadeOptions;
+
+export const SCENEMA_ACTORBLE_CURSOR_SCALE = 1.5;
 
 export const SCENEMA_ACTORBLE_ACTION_DEFAULTS = {
   moveTo: { motion: { kind: "ease", timing: "ease-in-out", duration: 800 } },
@@ -31,7 +34,31 @@ export function resolveScenemaActorbleOptions(
     ...options,
     root: options.root ?? document,
     actionDefaults: mergeActionDefaults(options.actionDefaults),
+    visualLayer:
+      options.visualLayer ??
+      new BrowserVisualLayer({
+        root: visualLayerRoot(document, options.root),
+        cursorScale: SCENEMA_ACTORBLE_CURSOR_SCALE,
+        ...(typeof options.feedback === "object" && options.feedback.text !== undefined
+          ? { textVisibility: options.feedback.text }
+          : {}),
+      }),
   };
+}
+
+function visualLayerRoot(
+  document: Document,
+  root: ScenemaActorbleOptions["root"],
+): Document | ShadowRoot {
+  if (!root) {
+    return document;
+  }
+
+  if (root.nodeType === 9 || root.nodeType === 11) {
+    return root as Document | ShadowRoot;
+  }
+
+  return root.ownerDocument ?? document;
 }
 
 function mergeActionDefaults(overrides: BrowserActionDefaults = {}): BrowserActionDefaults {
