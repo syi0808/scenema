@@ -91,7 +91,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity);
             transition-delay: var(--overlay-delay); }
           .focus-ring { position: absolute; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
-            border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #17191d66, 0 0 20px #fff4;
+            border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #0f172a66, 0 0 20px #fff4;
             opacity: 0; transform: scale(.96); transition: opacity var(--overlay-duration) ease,
             transform var(--overlay-duration) cubic-bezier(.22, 1, .36, 1); }
           .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1);
@@ -100,14 +100,14 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .scene[data-phase="exit"] .focus-ring, .scene[data-phase="exit"] .card { opacity: 0;
             transition-delay: 0ms; }
           .card { position: absolute; z-index: 2; width: min(320px, calc(100% - 32px)); padding: 18px;
-            box-sizing: border-box; color: #17191d; background: #fcfbf7; border: 1px solid #aaa69d;
-            border-radius: 8px; box-shadow: 0 12px 32px #17191d24; pointer-events: auto; opacity: 0;
+            box-sizing: border-box; color: #0f172a; background: #fff; border: 1px solid #94a3b8;
+            border-radius: 8px; box-shadow: 0 12px 32px #0f172a24; pointer-events: auto; opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
           .scene[data-phase="active"] .card { opacity: 1; transition-delay: var(--popup-delay); }
-          h2 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.015em; } p { margin: 0 0 14px; color: #62635f; }
-          footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #62635f; font: 12px/1.4 "SFMono-Regular", Consolas, monospace; }
+          h2 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.015em; } p { margin: 0 0 14px; color: #475569; }
+          footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #475569; font: 12px/1.4 "SFMono-Regular", Consolas, monospace; }
           button { min-height: 36px; border: 1px solid transparent; border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; }
-          .back { color: #17191d; border-color: #d6d2c8; background: transparent; } .next { color: #fff; background: #2450e6; font-weight: 650; }
+          .back { color: #0f172a; border-color: #e2e8f0; background: transparent; } .next { color: #fff; background: #2450e6; font-weight: 650; }
           @media (prefers-reduced-motion: reduce) { .overlay-surface, .focus-ring, .card {
             transition-duration: 1ms !important; transition-delay: 0ms !important; } }
         </style>

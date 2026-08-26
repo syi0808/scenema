@@ -21,7 +21,7 @@
 <svelte:head>
   <title>Scenema — Guide people through your real product</title>
   <meta name="description" content="Scenema performs real clicks, typing, and navigation—one user-paced step at a time." />
-  <meta name="theme-color" content="#f3f1eb" />
+  <meta name="theme-color" content="#f8fafc" />
 </svelte:head>
 
 <Header onStart={startDemo} assetPath={sitePath("/assets/scenema-symbol.png")} homePath={sitePath("/")} />
@@ -58,7 +58,7 @@
         <p>Match each route, point to a stable target, and define the action. The runtime checkpoints progress before navigation begins.</p>
         <a class="text-link" href="https://github.com/syi0808/scenema#readme">Read the documentation <span aria-hidden="true">→</span></a>
       </div>
-      <div class="code-panel" aria-label="Scenario TypeScript example">
+      <div class="code-panel" role="region" aria-label="Scenario TypeScript example">
         <div class="code-panel__bar">create-project.ts</div>
         <pre><code><span class="code-muted">// The scene matches the real interface.</span>
 <span class="code-key">defineScenario</span>(&#123;

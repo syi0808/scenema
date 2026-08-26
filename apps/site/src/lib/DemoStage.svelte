@@ -99,7 +99,7 @@
       presenter: createTourPresenter({
         document,
         container: stage,
-        overlay: { color: "#17191d", opacity: 0.58, padding: 8, borderRadius: 8 },
+        overlay: { color: "#0f172a", opacity: 0.58, padding: 8, borderRadius: 8 },
       }),
       onError(error) {
         status = `${error.message} Reset the demo and try again.`;

@@ -6,7 +6,7 @@ Scenema is a **quiet instrument for rehearsing product flows**. The interface sh
 
 ## Mood
 
-- **Operational and calm.** Warm paper surfaces, clear rules, and compact labels create the order of a working tool.
+- **Operational and calm.** Cool slate surfaces, clear rules, and compact labels create the order of a working tool.
 - **Evidence first.** The live product, current pathname, and scenario code carry more weight than marketing claims.
 - **Human-paced.** The guide clearly separates the moment a person chooses to continue from the action Scenema performs.
 - **Sparse, not oversized.** Space establishes reading order. Display type never becomes the product itself.

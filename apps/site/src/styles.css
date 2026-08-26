@@ -1,18 +1,42 @@
 :root {
   color-scheme: light;
-  --canvas: #f3f1eb;
-  --surface: #fcfbf7;
-  --surface-strong: #ffffff;
-  --ink: #17191d;
-  --muted: #62635f;
-  --line: #d6d2c8;
-  --line-strong: #aaa69d;
-  --action: #2450e6;
-  --action-hover: #193ec0;
-  --action-text: #ffffff;
-  --success: #147a4b;
-  --danger: #b63b32;
-  --selection: #ccd7ff;
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+  --neutral-950: #020617;
+  --blue-50: #eef3ff;
+  --blue-100: #dce6ff;
+  --blue-200: #bfd0ff;
+  --blue-300: #95b1ff;
+  --blue-400: #6688ff;
+  --blue-500: #3f61f7;
+  --blue-600: #2450e6;
+  --blue-700: #1d3fc2;
+  --blue-800: #1f389d;
+  --blue-900: #1e347c;
+  --blue-950: #151f4b;
+  --canvas: var(--neutral-50);
+  --surface: var(--neutral-100);
+  --surface-strong: var(--neutral-0);
+  --ink: var(--neutral-900);
+  --muted: var(--neutral-600);
+  --line: var(--neutral-200);
+  --line-strong: var(--neutral-400);
+  --action: var(--blue-600);
+  --action-hover: var(--blue-700);
+  --action-text: var(--neutral-0);
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --selection: var(--blue-200);
   --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --space-1: 4px;
@@ -629,15 +653,15 @@ a {
 
 .code-panel {
   overflow: hidden;
-  color: #f2f0e9;
+  color: var(--neutral-100);
   border-radius: var(--radius-frame);
-  background: #1b1d21;
+  background: var(--neutral-950);
 }
 
 .code-panel__bar {
   padding: 14px var(--space-4);
-  color: #aaa9a4;
-  border-bottom: 1px solid #383a3f;
+  color: var(--neutral-400);
+  border-bottom: 1px solid var(--neutral-800);
   font: 12px/1.4 var(--font-mono);
 }
 
@@ -650,15 +674,15 @@ pre {
 }
 
 .code-key {
-  color: #9eb2ff;
+  color: var(--blue-300);
 }
 
 .code-string {
-  color: #a5d6b4;
+  color: #86efac;
 }
 
 .code-muted {
-  color: #858781;
+  color: var(--neutral-400);
 }
 
 .final-callout {
