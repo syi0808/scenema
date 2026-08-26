@@ -6,6 +6,9 @@ import "./styles.css";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
 let demoRuntime: Scenema | null = null;
+const themeKey = "scenema:theme";
+
+applySavedTheme();
 
 const demoScenario = defineScenario({
   id: "create-project-demo",
@@ -68,90 +71,110 @@ const demoScenario = defineScenario({
 });
 
 function renderLanding(): void {
-  document.title = "Scenema — Choreography for real products";
+  document.title = "Scenema — Direct the real product";
   app.innerHTML = `
     <header class="site-header">
       <div class="shell site-header__inner">
-        <a class="wordmark" href="${sitePath("/")}" data-route>Scenema</a>
+        <a class="wordmark" href="${sitePath("/")}" data-route aria-label="Scenema home"><span aria-hidden="true">S/</span> Scenema</a>
         <nav class="site-nav" aria-label="Primary navigation">
-          <a href="#principles">Principles</a>
-          <a href="#architecture">Architecture</a>
-          <a class="button button--small" href="${sitePath("/demo/projects")}" data-route>Run the demo</a>
+          <a href="#model">The model</a>
+          <a href="#protocol">Protocol</a>
+          <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
+          <a class="button button--small" href="${sitePath("/demo/projects")}" data-route>Run live scenario</a>
         </nav>
       </div>
     </header>
     <main id="main">
-      <section class="shell hero">
+      <section class="hero shell" aria-labelledby="hero-title">
         <div class="hero__copy">
-          <p class="eyebrow">Product choreography runtime</p>
-          <h1>Guide people through the real product.</h1>
-          <p class="hero__lead">Scenema runs declarative product tours on your application. People choose when to continue; Scenema moves, clicks, types, and survives navigation.</p>
+          <p class="overline"><span>Product choreography</span><span>Web runtime</span></p>
+          <h1 id="hero-title">Direct the<br><em>real</em> product.</h1>
+          <p class="hero__lead">Scenema turns live interfaces into guided sequences. Your user calls the next scene. Scenema moves, types, clicks, and keeps the story intact across navigation.</p>
           <div class="hero__actions">
-            <a class="button" href="${sitePath("/demo/projects")}" data-route>Run the live demo</a>
-            <a class="button button--secondary" href="#architecture">See how it works</a>
+            <a class="button" href="${sitePath("/demo/projects")}" data-route>Run the live scenario <span aria-hidden="true">→</span></a>
+            <a class="text-link" href="#model">Understand the model</a>
           </div>
         </div>
-        <div class="code-window" aria-label="Scenario code example">
-          <div class="code-window__bar"><span>onboarding.ts</span><span>same DSL · SPA + MPA</span></div>
-          <pre><code><span class="code-key">defineScenario</span>({
+        <div class="sequence" aria-label="Example scenario sequence">
+          <div class="sequence__head"><span>Scenario / create-project</span><span>3 scenes</span></div>
+          <ol>
+            <li class="is-active"><span class="sequence__index">01</span><div><strong>Projects</strong><code>/projects</code></div><span class="sequence__state">Current</span></li>
+            <li><span class="sequence__index">02</span><div><strong>Name project</strong><code>/projects/new</code></div><span class="sequence__action">Type</span></li>
+            <li><span class="sequence__index">03</span><div><strong>Project ready</strong><code>/projects/:slug</code></div><span class="sequence__action">Arrive</span></li>
+          </ol>
+          <div class="sequence__foot"><span>User: proceed</span><span>Scenema: perform →</span></div>
+        </div>
+      </section>
+
+      <section class="statement" id="model">
+        <div class="shell statement__grid">
+          <p class="section-index">01 / The model</p>
+          <div class="statement__body">
+            <h2>Not a tour painted<br>over your interface.</h2>
+            <p>Scenema understands the interface itself. Each Scene matches a real route and visible state. Each Step acts on a real DOM target.</p>
+          </div>
+          <div class="model-lines">
+            <div><span>01</span><strong>People choose when.</strong><p>Every Step waits. Nothing races ahead of the person watching.</p></div>
+            <div><span>02</span><strong>Scenema performs how.</strong><p>Pointer, click, and type actions run against the live product.</p></div>
+            <div><span>03</span><strong>State survives the cut.</strong><p>Checkpoints restore the right Scene after SPA or full-page navigation.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="protocol-section" id="protocol">
+        <div class="shell">
+          <div class="protocol-heading">
+            <p class="section-index">02 / Runtime protocol</p>
+            <h2>One sequence.<br>Every navigation model.</h2>
+            <p>SPA runtimes continue. MPA runtimes restart. The protocol stays the same, so the scenario remains portable.</p>
+          </div>
+          <ol class="protocol" aria-label="Scenema runtime protocol">
+            <li><span>01</span><strong>Present</strong><small>Show the current Step</small></li>
+            <li><span>02</span><strong>Proceed</strong><small>Wait for user intent</small></li>
+            <li><span>03</span><strong>Checkpoint</strong><small>Persist before action</small></li>
+            <li><span>04</span><strong>Perform</strong><small>Act on the product</small></li>
+            <li><span>05</span><strong>Reconcile</strong><small>Resolve the next Scene</small></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="definition-section">
+        <div class="shell definition-grid">
+          <div class="definition-copy">
+            <p class="section-index">03 / Define once</p>
+            <h2>The route is part of the script.</h2>
+            <p>Define stable UI states, targets, and transitions. Scenema handles the document lifetime underneath.</p>
+            <a class="text-link" href="${sitePath("/demo/projects")}" data-route>See this scenario run →</a>
+          </div>
+          <div class="code-window" aria-label="Scenario TypeScript example">
+            <div class="code-window__bar"><span>create-project.ts</span><span>TypeScript</span></div>
+            <pre><code><span class="code-key">defineScenario</span>({
   id: <span class="code-string">"create-project"</span>,
   scenes: [{
     id: <span class="code-string">"projects"</span>,
-    match: {
-      pathname: <span class="code-string">"/projects"</span>,
-      visible: <span class="code-string">"#project-list"</span>
-    },
+    match: { pathname: <span class="code-string">"/projects"</span> },
     steps: [{
       target: <span class="code-string">"#create-project"</span>,
-      present: { title: <span class="code-string">"Create a project"</span> },
       transition: {
         trigger: { click: <span class="code-key">true</span> },
         to: <span class="code-string">"project-create"</span>
       }
     }]
   }]
-});</code></pre>
-        </div>
-      </section>
-
-      <section class="section" id="principles">
-        <div class="shell">
-          <div class="section-heading">
-            <h2>The user controls the pace. Scenema controls the choreography.</h2>
-            <p>A scenario is not a recording. It understands stable UI states and performs real interactions only after the user proceeds.</p>
-          </div>
-          <div class="principles">
-            <article class="principle"><span class="principle__number">01</span><h3>Real interactions</h3><p>Move, click, and type against actual DOM targets. The product behaves exactly as it does for a person.</p></article>
-            <article class="principle"><span class="principle__number">02</span><h3>Navigation is explicit</h3><p>Transitions name their destination Scene. Router choice and document lifetime stay outside the scenario.</p></article>
-            <article class="principle"><span class="principle__number">03</span><h3>Progress survives</h3><p>Checkpoint before action. Resume from the same logical state after route changes, reloads, or full navigation.</p></article>
+})</code></pre>
           </div>
         </div>
       </section>
 
-      <section class="section" id="architecture">
-        <div class="shell">
-          <div class="section-heading">
-            <h2>One protocol across every page.</h2>
-            <p>SPA runtimes survive. MPA runtimes restart. Both follow the same sequence, so scenario definitions stay portable.</p>
-          </div>
-          <div class="protocol" aria-label="Scenema runtime protocol">
-            <div class="protocol__step"><span>01</span><strong>Present</strong></div>
-            <div class="protocol__step"><span>02</span><strong>Proceed</strong></div>
-            <div class="protocol__step"><span>03</span><strong>Checkpoint</strong></div>
-            <div class="protocol__step"><span>04</span><strong>Perform</strong></div>
-            <div class="protocol__step"><span>05</span><strong>Reconcile</strong></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
+      <section class="final-section">
         <div class="shell final-cta">
-          <h2>See the runtime act on a real interface.</h2>
-          <a class="button" href="${sitePath("/demo/projects")}" data-route>Start the guided demo</a>
+          <div><p class="section-index">Next scene</p><h2>Watch the interface<br>tell the story.</h2></div>
+          <a class="button button--light" href="${sitePath("/demo/projects")}" data-route>Run the live scenario <span aria-hidden="true">→</span></a>
         </div>
       </section>
     </main>
-    <footer class="shell site-footer"><span>Scenema</span><span>Declarative scenarios for real web applications.</span></footer>`;
+    <footer class="shell site-footer"><span><strong>Scenema</strong> / Product choreography runtime</span><span>Persist → Perform → Reconcile</span></footer>`;
+  bindThemeToggle();
 }
 
 function renderDemoShell(): void {
@@ -160,20 +183,22 @@ function renderDemoShell(): void {
     <div class="demo-page">
       <header class="demo-header">
         <div class="shell demo-header__inner">
-          <a class="wordmark" href="${sitePath("/")}" data-route>Scenema</a>
-          <span class="demo-header__label">Live product demo</span>
+          <a class="wordmark" href="${sitePath("/")}" data-route aria-label="Scenema home"><span aria-hidden="true">S/</span> Scenema</a>
+          <span class="demo-header__label">Live scenario / Create project</span>
           <div class="demo-header__actions">
             <button class="text-button" id="reset-demo" type="button">Reset demo</button>
-            <a class="button button--small button--secondary" href="${sitePath("/")}" data-route>Exit demo</a>
+            <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
+            <a class="button button--small button--secondary" href="${sitePath("/")}" data-route>Exit</a>
           </div>
         </div>
       </header>
       <main id="main" class="demo-layout">
-        <aside class="demo-sidebar"><strong>Northstar</strong><nav aria-label="Demo workspace"><a href="${sitePath("/demo/projects")}" data-demo-route aria-current="page">Projects</a></nav></aside>
+        <aside class="demo-sidebar"><span class="demo-sidebar__label">Demo application</span><strong>Northstar</strong><nav aria-label="Demo workspace"><a href="${sitePath("/demo/projects")}" data-demo-route aria-current="page">Projects <span>02</span></a></nav></aside>
         <section class="demo-workspace" id="demo-workspace"></section>
       </main>
-      <p class="demo-status" id="demo-status" aria-live="polite">Loading demo…</p>
+      <div class="demo-status" role="status" aria-live="polite"><span>Status</span><p id="demo-status">Loading demo…</p></div>
     </div>`;
+  bindThemeToggle();
   document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
   document.querySelector("[data-demo-route]")?.addEventListener("click", (event) => {
     event.preventDefault();
@@ -187,7 +212,7 @@ function renderDemoContent(): void {
   if (!workspace) return;
   if (routePath() === "/demo/projects/new") {
     workspace.innerHTML = `
-      <div class="workspace-header"><div><h1>New project</h1><p>Create a workspace for a new initiative.</p></div></div>
+      <div class="workspace-header"><div><span class="workspace-kicker">Projects / New</span><h1>New project</h1></div></div>
       <form class="form" id="project-form" novalidate>
         <div class="field"><label for="project-name">Project name</label><input id="project-name" name="name" autocomplete="off" aria-describedby="name-help name-error"><small id="name-help">Use a name your team will recognize.</small></div>
         <p class="field-error" id="name-error" role="alert"></p>
@@ -215,12 +240,12 @@ function renderDemoContent(): void {
   }
   if (routePath() === "/demo/projects/launch-workspace") {
     workspace.innerHTML = `
-      <div class="success-state" id="project-ready"><div class="success-state__mark" aria-hidden="true">✓</div><h1>Launch workspace is ready.</h1><p>The project was created through real DOM interactions while the scenario followed each route change.</p><button class="button button--secondary" id="return-projects" type="button">Return to projects</button></div>`;
+      <div class="success-state" id="project-ready"><p class="success-state__mark">Scenario complete</p><h1>Launch workspace<br>is ready.</h1><p>The interface changed routes twice. Scenema stayed with the same sequence.</p><button class="button button--secondary" id="return-projects" type="button">Return to projects</button></div>`;
     document.querySelector("#return-projects")?.addEventListener("click", resetDemo);
     return;
   }
   workspace.innerHTML = `
-    <div class="workspace-header"><div><h1>Projects</h1><p>Workspaces your team can access.</p></div><button class="button" id="create-project" type="button">Create project</button></div>
+    <div class="workspace-header"><div><span class="workspace-kicker">Workspace / 02 projects</span><h1>Projects</h1></div><button class="button" id="create-project" type="button">Create project</button></div>
     <div class="project-list" id="project-list"><div class="project-row"><div><strong>Website refresh</strong><span>Design and engineering</span></div><span>12 members</span></div><div class="project-row"><div><strong>Research library</strong><span>Customer insights</span></div><span>6 members</span></div></div>`;
   document
     .querySelector("#create-project")
@@ -293,6 +318,39 @@ function setDemoStatus(message: string, error = false): void {
   if (!status) return;
   status.textContent = message;
   status.style.color = error ? "var(--danger)" : "";
+}
+
+function applySavedTheme(): void {
+  const savedTheme = localStorage.getItem(themeKey);
+  if (savedTheme === "light" || savedTheme === "dark") {
+    document.documentElement.dataset.theme = savedTheme;
+  }
+}
+
+function activeTheme(): "light" | "dark" {
+  const selectedTheme = document.documentElement.dataset.theme;
+  if (selectedTheme === "light" || selectedTheme === "dark") return selectedTheme;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function bindThemeToggle(): void {
+  const buttons = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
+  const updateLabels = (): void => {
+    const nextTheme = activeTheme() === "dark" ? "Light" : "Dark";
+    buttons.forEach((button) => {
+      button.textContent = `${nextTheme} mode`;
+      button.setAttribute("aria-label", `Switch to ${nextTheme.toLowerCase()} mode`);
+    });
+  };
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextTheme = activeTheme() === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = nextTheme;
+      localStorage.setItem(themeKey, nextTheme);
+      updateLabels();
+    });
+  });
+  updateLabels();
 }
 
 function route(): void {
