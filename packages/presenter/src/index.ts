@@ -101,7 +101,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
             box-sizing: border-box; color: #f8fafc; background: #111827; border: 1px solid #374151;
             border-radius: 14px; box-shadow: 0 18px 48px #0005; pointer-events: auto; opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
-          .scene[data-phase="active"] .card { opacity: 1; }
+          .scene[data-phase="active"] .card { opacity: 1; transition-delay: var(--popup-delay); }
           h2 { margin: 0 0 6px; font-size: 16px; } p { margin: 0 0 14px; color: #cbd5e1; }
           footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #94a3b8; font-size: 12px; }
           button { border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
@@ -122,6 +122,10 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       scene.style.setProperty("--overlay-opacity", String(overlay?.opacity ?? 0));
       scene.style.setProperty("--overlay-delay", `${overlay?.delay ?? 0}ms`);
       scene.style.setProperty("--overlay-duration", `${overlay?.duration ?? 0}ms`);
+      scene.style.setProperty(
+        "--popup-delay",
+        `${(overlay?.delay ?? 0) + (overlay?.duration ?? 0)}ms`,
+      );
       scene.style.setProperty("--highlight-radius", `${overlay?.borderRadius ?? 0}px`);
       root.querySelector("h2")!.textContent = presentation.title;
       const description = root.querySelector("p")!;
