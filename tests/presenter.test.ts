@@ -161,4 +161,43 @@ describe("createTourPresenter overlay", () => {
 
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
   });
+
+  it("scopes the overlay and interaction lock to a container", () => {
+    document.body.innerHTML =
+      '<main id="outside">Landing copy</main><section id="stage"><button id="target">Target</button></section>';
+    const stage = document.querySelector<HTMLElement>("#stage")!;
+    Object.defineProperties(stage, {
+      clientWidth: { configurable: true, value: 640 },
+      clientHeight: { configurable: true, value: 420 },
+    });
+    stage.getBoundingClientRect = () => DOMRect.fromRect({ x: 20, y: 40, width: 640, height: 420 });
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 120, width: 200, height: 40 });
+    const presenter = createTourPresenter({
+      document,
+      container: stage,
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Scoped guide" },
+      {
+        sceneId: "projects",
+        stepId: "create",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "locked",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const host = stage.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
+    expect(host.style.position).toBe("absolute");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("x")).toBe("70");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("y")).toBe("70");
+    expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
+    expect(document.querySelector("#outside")!.hasAttribute("inert")).toBe(false);
+  });
 });

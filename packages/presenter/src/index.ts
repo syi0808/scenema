@@ -11,6 +11,7 @@ export interface TourOverlayOptions {
 
 export interface TourPresenterOptions {
   document?: Document;
+  container?: HTMLElement;
   nextLabel?: string;
   backLabel?: string;
   overlay?: boolean | TourOverlayOptions;
@@ -48,6 +49,7 @@ const DEFAULT_OVERLAY: ResolvedOverlayOptions = {
 
 export function createTourPresenter(options: TourPresenterOptions = {}): Presenter {
   const document = options.document ?? window.document;
+  const container = options.container;
   const overlay = resolveOverlayOptions(options.overlay);
   let host: HTMLElement | null = null;
   let removePositionListeners = () => {};
@@ -82,14 +84,14 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       root.innerHTML = `
         <style>
           :host { all: initial; position: fixed; z-index: 2147483647; inset: 0; pointer-events: none; }
-          .scene { position: fixed; inset: 0; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
-          .overlay-svg { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; }
+          .scene { position: absolute; inset: 0; font: 14px/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+          .overlay-svg { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; }
           .overlay-surface { fill: var(--overlay-color); opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
           .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity);
             transition-delay: var(--overlay-delay); }
-          .focus-ring { position: fixed; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
-            border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #0f172a66, 0 0 24px #fff3;
+          .focus-ring { position: absolute; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
+            border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #17191d66, 0 0 20px #fff4;
             opacity: 0; transform: scale(.96); transition: opacity var(--overlay-duration) ease,
             transform var(--overlay-duration) cubic-bezier(.22, 1, .36, 1); }
           .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1);
@@ -97,15 +99,15 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .scene[data-phase="exit"] .overlay-surface,
           .scene[data-phase="exit"] .focus-ring, .scene[data-phase="exit"] .card { opacity: 0;
             transition-delay: 0ms; }
-          .card { position: fixed; z-index: 2; width: min(320px, calc(100vw - 32px)); padding: 18px;
-            box-sizing: border-box; color: #f8fafc; background: #111827; border: 1px solid #374151;
-            border-radius: 14px; box-shadow: 0 18px 48px #0005; pointer-events: auto; opacity: 0;
+          .card { position: absolute; z-index: 2; width: min(320px, calc(100% - 32px)); padding: 18px;
+            box-sizing: border-box; color: #17191d; background: #fcfbf7; border: 1px solid #aaa69d;
+            border-radius: 8px; box-shadow: 0 12px 32px #17191d24; pointer-events: auto; opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
           .scene[data-phase="active"] .card { opacity: 1; transition-delay: var(--popup-delay); }
-          h2 { margin: 0 0 6px; font-size: 16px; } p { margin: 0 0 14px; color: #cbd5e1; }
-          footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #94a3b8; font-size: 12px; }
-          button { border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
-          .back { color: #e2e8f0; background: #334155; } .next { color: #111827; background: #f8fafc; font-weight: 650; }
+          h2 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.015em; } p { margin: 0 0 14px; color: #62635f; }
+          footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #62635f; font: 12px/1.4 "SFMono-Regular", Consolas, monospace; }
+          button { min-height: 36px; border: 1px solid transparent; border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; }
+          .back { color: #17191d; border-color: #d6d2c8; background: transparent; } .next { color: #fff; background: #2450e6; font-weight: 650; }
           @media (prefers-reduced-motion: reduce) { .overlay-surface, .focus-ring, .card {
             transition-duration: 1ms !important; transition-delay: 0ms !important; } }
         </style>
@@ -141,23 +143,25 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       next.textContent =
         options.nextLabel ?? (context.stepNumber === context.totalSteps ? "Finish" : "Next");
       next.addEventListener("click", context.controls.proceed);
-      document.body.append(host);
+      if (container) host.style.position = "absolute";
+      (container ?? document.body).append(host);
       if (context.interaction === "locked") {
-        releaseInteractionLock = lockDocumentInteraction(document, host);
+        releaseInteractionLock = lockDocumentInteraction(document, host, container);
       }
 
       const card = root.querySelector<HTMLElement>(".card")!;
       const overlayRoot = root.querySelector<HTMLElement>(".overlay")!;
       const overlayController = overlay
-        ? createOverlayController(overlayRoot, scene, document, overlay)
+        ? createOverlayController(overlayRoot, scene, document, overlay, container)
         : null;
       const updatePosition = () => {
         const target = context.target ? document.querySelector(context.target) : null;
         const highlight = overlayController?.update(target);
         positionCard(
           card,
-          highlight ?? (!overlayController && target ? elementRect(target) : null),
+          highlight ?? (!overlayController && target ? elementRect(target, container) : null),
           document,
+          container,
         );
       };
       updatePosition();
@@ -171,14 +175,19 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
         if (scene.dataset.phase !== "enter") return;
         scene.setAttribute("data-phase", "active");
       });
-      next.focus();
+      next.focus({ preventScroll: true });
     },
     dismiss,
   };
 }
 
-function lockDocumentInteraction(document: Document, host: HTMLElement): () => void {
-  const siblings = Array.from(document.body.children).filter(
+function lockDocumentInteraction(
+  document: Document,
+  host: HTMLElement,
+  container?: HTMLElement,
+): () => void {
+  const parent = container ?? document.body;
+  const siblings = Array.from(parent.children).filter(
     (element): element is HTMLElement => element instanceof HTMLElement && element !== host,
   );
   const initiallyInert = new Set(siblings.filter((element) => element.hasAttribute("inert")));
@@ -205,7 +214,12 @@ function resolveOverlayOptions(
   };
 }
 
-function positionCard(card: HTMLElement, anchor: OverlayRect | null, document: Document): void {
+function positionCard(
+  card: HTMLElement,
+  anchor: OverlayRect | null,
+  document: Document,
+  container?: HTMLElement,
+): void {
   if (!anchor) {
     card.style.left = "50%";
     card.style.top = "50%";
@@ -213,7 +227,7 @@ function positionCard(card: HTMLElement, anchor: OverlayRect | null, document: D
     return;
   }
   card.style.transform = "";
-  const { width, height } = viewportSize(document);
+  const { width, height } = viewportSize(document, container);
   const left = Math.min(Math.max(16, anchor.x), Math.max(16, width - 336));
   const top = anchor.y + anchor.height + 12;
   card.style.left = `${left}px`;
@@ -225,6 +239,7 @@ function createOverlayController(
   scene: HTMLElement,
   document: Document,
   options: ResolvedOverlayOptions,
+  container?: HTMLElement,
 ): OverlayController {
   root.innerHTML = `
     <svg class="overlay-svg" aria-hidden="true">
@@ -243,10 +258,10 @@ function createOverlayController(
   const hole = root.querySelector<SVGRectElement>(".mask-hole")!;
   const surface = root.querySelector<SVGRectElement>(".overlay-surface")!;
   const ring = root.querySelector<HTMLElement>(".focus-ring")!;
-  let viewport = viewportSize(document);
+  let viewport = viewportSize(document, container);
 
   const setViewport = () => {
-    viewport = viewportSize(document);
+    viewport = viewportSize(document, container);
     svg.setAttribute("viewBox", `0 0 ${viewport.width} ${viewport.height}`);
     for (const element of [field, surface]) {
       element.setAttribute("x", "0");
@@ -259,7 +274,7 @@ function createOverlayController(
   return {
     update(target) {
       setViewport();
-      const highlight = target ? targetOverlayRect(target, viewport, options) : null;
+      const highlight = target ? targetOverlayRect(target, viewport, options, container) : null;
       scene.dataset.hasTarget = String(Boolean(highlight));
       ring.hidden = !highlight;
       if (!highlight) {
@@ -278,12 +293,16 @@ function targetOverlayRect(
   target: Element,
   viewport: { width: number; height: number },
   options: ResolvedOverlayOptions,
+  container?: HTMLElement,
 ): OverlayRect {
   const rect = target.getBoundingClientRect();
-  const x = clamp(rect.left - options.padding, 0, viewport.width);
-  const y = clamp(rect.top - options.padding, 0, viewport.height);
-  const right = clamp(rect.right + options.padding, x, viewport.width);
-  const bottom = clamp(rect.bottom + options.padding, y, viewport.height);
+  const origin = container?.getBoundingClientRect();
+  const left = rect.left - (origin?.left ?? 0);
+  const top = rect.top - (origin?.top ?? 0);
+  const x = clamp(left - options.padding, 0, viewport.width);
+  const y = clamp(top - options.padding, 0, viewport.height);
+  const right = clamp(left + rect.width + options.padding, x, viewport.width);
+  const bottom = clamp(top + rect.height + options.padding, y, viewport.height);
   const targetRadius = targetBorderRadius(target, rect);
   return {
     x,
@@ -294,11 +313,12 @@ function targetOverlayRect(
   };
 }
 
-function elementRect(target: Element): OverlayRect {
+function elementRect(target: Element, container?: HTMLElement): OverlayRect {
   const rect = target.getBoundingClientRect();
+  const origin = container?.getBoundingClientRect();
   return {
-    x: rect.left,
-    y: rect.top,
+    x: rect.left - (origin?.left ?? 0),
+    y: rect.top - (origin?.top ?? 0),
     width: rect.width,
     height: rect.height,
     radius: 0,
@@ -358,7 +378,11 @@ function setSvgRect(element: SVGRectElement, rect: OverlayRect): void {
   element.setAttribute("rx", String(Math.min(rect.radius, rect.width / 2, rect.height / 2)));
 }
 
-function viewportSize(document: Document): { width: number; height: number } {
+function viewportSize(
+  document: Document,
+  container?: HTMLElement,
+): { width: number; height: number } {
+  if (container) return { width: container.clientWidth, height: container.clientHeight };
   return {
     width: document.defaultView?.innerWidth ?? document.documentElement.clientWidth,
     height: document.defaultView?.innerHeight ?? document.documentElement.clientHeight,
