@@ -36,33 +36,30 @@
         <a class="text-link" href="#scenario-code">See the scenario code <span aria-hidden="true">↓</span></a>
       </div>
     </div>
-    <p class="hero__note"><span>Open source TypeScript</span><span>SPA + page reload recovery</span><span>Framework-agnostic DOM runtime</span></p>
   </section>
 
   <DemoStage bind:this={demoStage} />
 
   <section class="evidence-section container" aria-labelledby="evidence-title">
     <div class="section-heading">
-      <p class="meta">What just happened</p>
       <h2 id="evidence-title">A guide that acts on the product, not around it.</h2>
     </div>
     <div class="evidence-list">
-      <article><span>01</span><h3>You chose when to continue.</h3><p>Every step waited for your intent.</p></article>
-      <article><span>02</span><h3>Scenema clicked and typed.</h3><p>The actions ran against real DOM targets.</p></article>
-      <article><span>03</span><h3>The same scenario survived navigation.</h3><p>The pathname changed while progress continued.</p></article>
+      <article><h3>You chose when to continue.</h3><p>Every step waited for your intent.</p></article>
+      <article><h3>Scenema clicked and typed.</h3><p>The actions ran against real DOM targets.</p></article>
+      <article><h3>The same scenario survived navigation.</h3><p>The pathname changed while progress continued.</p></article>
     </div>
   </section>
 
   <section class="code-section" id="scenario-code" aria-labelledby="code-title">
     <div class="container code-section__grid">
       <div class="section-heading">
-        <p class="meta">The scenario behind the demo</p>
         <h2 id="code-title">Interface states become a sequence.</h2>
         <p>Match each route, point to a stable target, and define the action. The runtime checkpoints progress before navigation begins.</p>
         <a class="text-link" href="https://github.com/syi0808/scenema#readme">Read the documentation <span aria-hidden="true">→</span></a>
       </div>
       <div class="code-panel" aria-label="Scenario TypeScript example">
-        <div class="code-panel__bar"><span>create-project.ts</span><span>TypeScript</span></div>
+        <div class="code-panel__bar">create-project.ts</div>
         <pre><code><span class="code-muted">// The scene matches the real interface.</span>
 <span class="code-key">defineScenario</span>(&#123;
   id: <span class="code-string">"create-project"</span>,
@@ -86,7 +83,7 @@
   </section>
 
   <section class="final-callout container" aria-labelledby="final-title">
-    <div><p class="meta">Start with one flow</p><h2 id="final-title">Add your first scenario.</h2></div>
+    <h2 id="final-title">Add your first scenario.</h2>
     <div class="install-block"><code>pnpm add scenema</code><Button label="View on GitHub" href="https://github.com/syi0808/scenema" variant="secondary" /></div>
   </section>
 </main>

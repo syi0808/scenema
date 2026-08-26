@@ -78,10 +78,10 @@
     ],
   });
 
-  const steps: { id: DemoState; title: string; detail: string }[] = [
-    { id: "projects", title: "Create project", detail: "Scenema clicks" },
-    { id: "new", title: "Name it", detail: "Scenema types" },
-    { id: "ready", title: "Confirm route", detail: "Flow continues" },
+  const steps: { id: DemoState; title: string }[] = [
+    { id: "projects", title: "Create project" },
+    { id: "new", title: "Name it" },
+    { id: "ready", title: "Confirm route" },
   ];
 
   const activeIndex = $derived(steps.findIndex((step) => step.id === state));
@@ -217,17 +217,16 @@
 </script>
 
 <section class="demo-section container" id="live-demo" aria-labelledby="demo-title">
-  <div class="section-heading section-heading--split">
-    <div>
-      <p class="meta">Live proof, not a mockup</p>
-      <h2 id="demo-title">Watch the URL. Scenema stays with the flow.</h2>
+    <div class="section-heading section-heading--split">
+      <div>
+        <h2 id="demo-title">Watch the URL. Scenema stays with the flow.</h2>
     </div>
     <p>Advance each step yourself. Scenema performs the click, typing, and navigation inside this working interface.</p>
   </div>
 
   <div class="demo-stage" id="demo-stage" bind:this={stage}>
     <div class="demo-toolbar">
-      <div class="route-readout"><span>Current route</span><code>{routeLabel}</code></div>
+      <div class="route-readout"><code>{routeLabel}</code></div>
       <div class="demo-toolbar__actions">
         <Button label="Reset" variant="quiet" size="small" onclick={reset} />
         {#if !running}
@@ -244,7 +243,7 @@
         </aside>
         <div class="demo-workspace" id="demo-workspace">
           {#if state === "new"}
-            <div class="workspace-header"><div><p class="meta">Projects / New</p><h3>New project</h3></div></div>
+            <div class="workspace-header"><h3>New project</h3></div>
             <form class="form" id="project-form" novalidate onsubmit={submitProject}>
               <div class="field">
                 <label for="project-name">Project name</label>
@@ -266,7 +265,7 @@
             </div>
           {:else}
             <div class="workspace-header">
-              <div><p class="meta">Workspace</p><h3>Projects</h3></div>
+              <h3>Projects</h3>
               <button class="button" id="create-project" type="button" onclick={() => navigate("new")}>Create project</button>
             </div>
             <div class="project-list" id="project-list">
@@ -278,11 +277,11 @@
       </div>
 
       <aside class="demo-rail" aria-label="30-second demo steps">
-        <div class="demo-rail__heading"><span>30-second demo</span><strong>Step {activeIndex + 1} of 3</strong></div>
+        <div class="demo-rail__heading"><strong>Step {activeIndex + 1} of 3</strong></div>
         <ol>
           {#each steps as step, index}
             <li data-state={index < activeIndex ? "complete" : index === activeIndex ? "active" : "pending"}>
-              <span>0{index + 1}</span><strong>{step.title}</strong><small>{step.detail}</small>
+              <strong>{step.title}</strong>
             </li>
           {/each}
         </ol>
