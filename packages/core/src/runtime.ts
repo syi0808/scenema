@@ -23,6 +23,7 @@ export interface RuntimeOptions {
   createId?: () => string;
   now?: () => number;
   clickDelay?: number;
+  cursorMoveDelay?: number;
   defaultTransitionTimeout?: number;
   onError?: (error: ScenemaError, inspection: RuntimeInspection) => void;
   logger?: (message: string, context?: Record<string, unknown>) => void;
@@ -172,7 +173,7 @@ export class ScenarioRuntime {
     this.persist("transition arrived");
     const firstStep = destination.steps[0];
     if (!firstStep) return this.fail("INVALID_SCENARIO", `Scene ${destination.id} has no steps.`);
-    await this.activateStep(destination, firstStep);
+    await this.activateStep(destination, firstStep, true);
   }
 
   inspect(): RuntimeInspection {
@@ -191,7 +192,11 @@ export class ScenarioRuntime {
     };
   }
 
-  private async activateStep(scene: SceneDefinition, step: StepDefinition): Promise<void> {
+  private async activateStep(
+    scene: SceneDefinition,
+    step: StepDefinition,
+    delayCursorMove = false,
+  ): Promise<void> {
     const session = this.requireSession();
     this.options.presenter.dismiss();
     session.sceneId = scene.id;
@@ -206,7 +211,10 @@ export class ScenarioRuntime {
       session.cursorTarget = cursorTarget;
     }
     this.persist("step enter");
-    if (cursorTarget) await this.options.actor.moveTo(cursorTarget);
+    if (cursorTarget) {
+      if (delayCursorMove) await this.wait(this.options.cursorMoveDelay);
+      await this.options.actor.moveTo(cursorTarget);
+    }
     await this.showPresentation(scene, step);
   }
 
@@ -269,12 +277,14 @@ export class ScenarioRuntime {
       return;
     }
     const stepKey = `${scene.id}/${step.id}`;
+    let actionPerformed = false;
     if (step.commit && !session.completedSteps?.includes(stepKey)) {
       await this.performCommit(step);
+      actionPerformed = true;
       session.completedSteps = [...(session.completedSteps ?? []), stepKey];
       this.persist("step committed");
     }
-    await this.verifyAndAdvance(scene, step);
+    await this.verifyAndAdvance(scene, step, actionPerformed);
   }
 
   private async performCommit(step: StepDefinition): Promise<void> {
@@ -322,12 +332,16 @@ export class ScenarioRuntime {
     await this.reconcile();
   }
 
-  private async verifyAndAdvance(scene: SceneDefinition, step: StepDefinition): Promise<void> {
+  private async verifyAndAdvance(
+    scene: SceneDefinition,
+    step: StepDefinition,
+    delayCursorMove = false,
+  ): Promise<void> {
     if (step.exit) await this.options.conditionWaiter.waitFor(step.exit.until, step.target);
     const index = scene.steps.findIndex(({ id }) => id === step.id);
     const nextStep = scene.steps[index + 1];
     if (nextStep) {
-      await this.activateStep(scene, nextStep);
+      await this.activateStep(scene, nextStep, delayCursorMove);
       return;
     }
     const session = this.requireSession();
@@ -338,11 +352,15 @@ export class ScenarioRuntime {
   }
 
   private async click(target: Target): Promise<void> {
-    const delay = Math.max(0, this.options.clickDelay ?? 0);
-    if (delay > 0) {
-      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, delay));
-    }
+    await this.wait(this.options.clickDelay);
     await this.options.actor.click(target);
+  }
+
+  private async wait(delay: number | undefined): Promise<void> {
+    const duration = Math.max(0, delay ?? 0);
+    if (duration > 0) {
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, duration));
+    }
   }
 
   private persist(message: string): void {

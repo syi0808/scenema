@@ -30,7 +30,12 @@ class MemoryStore implements SessionStore {
 }
 
 function createHarness(
-  overrides: { actor?: Actor; matchedScene?: () => string; clickDelay?: number } = {},
+  overrides: {
+    actor?: Actor;
+    matchedScene?: () => string;
+    clickDelay?: number;
+    cursorMoveDelay?: number;
+  } = {},
 ) {
   const store = new MemoryStore();
   const actor: Actor = overrides.actor ?? {
@@ -51,6 +56,9 @@ function createHarness(
     createId: () => "session-1",
     now: () => 100,
     ...(overrides.clickDelay === undefined ? {} : { clickDelay: overrides.clickDelay }),
+    ...(overrides.cursorMoveDelay === undefined
+      ? {}
+      : { cursorMoveDelay: overrides.cursorMoveDelay }),
   });
   return { runtime, store, actor, presenter, setMatchedScene: (id: string) => (matchedScene = id) };
 }
@@ -212,6 +220,47 @@ describe("ScenarioRuntime", () => {
       await vi.advanceTimersByTimeAsync(1);
       await operation;
       expect(click).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("pauses after an action before moving the cursor to the next step", async () => {
+    vi.useFakeTimers();
+    try {
+      const moveTo = vi.fn(async () => undefined);
+      const click = vi.fn(async () => undefined);
+      const { runtime } = createHarness({
+        actor: { moveTo, click, type: vi.fn() },
+        cursorMoveDelay: 300,
+      });
+      const scenario = defineScenario({
+        id: "delayed-cursor-move",
+        version: 1,
+        scenes: [
+          {
+            id: "main",
+            match: {},
+            steps: [
+              { id: "click", target: "#one", commit: { click: true } },
+              { id: "next", target: "#two", enter: { cursor: "move" } },
+            ],
+          },
+        ],
+      });
+
+      await runtime.start(scenario);
+      const operation = runtime.proceed();
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(click).toHaveBeenCalledOnce();
+      expect(moveTo).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(299);
+      expect(moveTo).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await operation;
+      expect(moveTo).toHaveBeenCalledOnce();
+      expect(moveTo).toHaveBeenCalledWith("#two");
     } finally {
       vi.useRealTimers();
     }
