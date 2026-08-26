@@ -17,11 +17,7 @@ describe("Scenema Actorble defaults", () => {
         motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
         pressDwell: 240,
       },
-      typeInto: {
-        delay: 100,
-        focusStrategy: "click",
-        focusClick: { pressDwell: 240 },
-      },
+      typeInto: { delay: 100 },
     });
   });
 
@@ -69,11 +65,7 @@ describe("Scenema Actorble defaults", () => {
         motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
         pressDwell: 50,
       },
-      typeInto: {
-        delay: 20,
-        focusStrategy: "click",
-        focusClick: { pressDwell: 240 },
-      },
+      typeInto: { delay: 20 },
     });
   });
 

@@ -25,9 +25,6 @@ beforeAll(async () => {
     const target = currentActorbleTarget();
     return target ? [target] : [];
   });
-  document.addEventListener("mousedown", (event) => {
-    if (event.target instanceof HTMLInputElement) event.target.focus();
-  });
   window.requestAnimationFrame = (callback: FrameRequestCallback) =>
     window.setTimeout(() => callback(0), 0);
   document.body.innerHTML =
