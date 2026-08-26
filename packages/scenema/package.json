@@ -12,7 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@actorble/browser": "^0.0.1",
+    "@actorble/browser": "^0.0.2",
     "@scenema/core": "workspace:*",
     "@scenema/runtime-web": "workspace:*"
   }
