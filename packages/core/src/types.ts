@@ -72,6 +72,7 @@ export interface ScenarioSession {
   phase: SessionPhase;
   cursorTarget?: Target;
   transition?: TransitionCheckpoint;
+  completedSteps?: string[];
   revision: number;
   updatedAt: number;
 }

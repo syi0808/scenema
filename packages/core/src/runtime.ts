@@ -59,6 +59,7 @@ export class ScenarioRuntime {
       sceneId: scene.id,
       stepId: firstStep.id,
       phase: "enter",
+      completedSteps: [],
       revision: 0,
       updatedAt: timestamp,
     };
@@ -267,7 +268,12 @@ export class ScenarioRuntime {
       await this.performTransition(scene, step, step.transition);
       return;
     }
-    if (step.commit) await this.performCommit(step);
+    const stepKey = `${scene.id}/${step.id}`;
+    if (step.commit && !session.completedSteps?.includes(stepKey)) {
+      await this.performCommit(step);
+      session.completedSteps = [...(session.completedSteps ?? []), stepKey];
+      this.persist("step committed");
+    }
     await this.verifyAndAdvance(scene, step);
   }
 

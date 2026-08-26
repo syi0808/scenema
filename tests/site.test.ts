@@ -25,6 +25,9 @@ beforeAll(async () => {
     const target = currentActorbleTarget();
     return target ? [target] : [];
   });
+  document.addEventListener("mousedown", (event) => {
+    if (event.target instanceof HTMLInputElement) event.target.focus();
+  });
   window.requestAnimationFrame = (callback: FrameRequestCallback) =>
     window.setTimeout(() => callback(0), 0);
   document.body.innerHTML =
@@ -55,6 +58,15 @@ describe("landing demo", () => {
       "Launch workspace",
     );
 
+    clickTourBack();
+    await expectTourTitle("Give the project a name");
+
+    clickTourNext();
+    await expectTourTitle("Create the project");
+    expect((document.querySelector("#project-name") as HTMLInputElement).value).toBe(
+      "Launch workspace",
+    );
+
     clickTourNext();
     await vi.waitFor(() => expect(location.pathname).toBe("/demo/projects/launch-workspace"));
     await expectTourTitle("The scenario stayed with you");
@@ -77,4 +89,9 @@ async function expectTourTitle(title: string): Promise<void> {
 function clickTourNext(): void {
   const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
   presenter.shadowRoot!.querySelector<HTMLButtonElement>(".next")!.click();
+}
+
+function clickTourBack(): void {
+  const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
+  presenter.shadowRoot!.querySelector<HTMLButtonElement>(".back")!.click();
 }

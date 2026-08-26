@@ -96,8 +96,41 @@ describe("ScenarioRuntime", () => {
       "enter",
       "present",
       "commit",
+      "commit",
       "complete",
     ]);
+  });
+
+  it("does not replay a completed commit after going back", async () => {
+    const scenario = defineScenario({
+      id: "backtracking",
+      version: 1,
+      scenes: [
+        {
+          id: "main",
+          match: {},
+          steps: [
+            {
+              id: "name",
+              target: "#name",
+              present: { title: "Name it" },
+              commit: { type: { value: "Scenema" } },
+            },
+            { id: "review", present: { title: "Review it" } },
+          ],
+        },
+      ],
+    });
+    const { runtime, actor } = createHarness();
+
+    await runtime.start(scenario);
+    await runtime.proceed();
+    await runtime.previous();
+    await runtime.proceed();
+
+    expect(actor.type).toHaveBeenCalledOnce();
+    expect(runtime.inspect().currentStep?.id).toBe("review");
+    expect(runtime.inspect().currentPhase).toBe("present");
   });
 
   it("persists a prepared transition before performing its trigger", async () => {
