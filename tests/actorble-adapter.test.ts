@@ -28,4 +28,27 @@ describe("ActorbleActorAdapter", () => {
       "Launch workspace",
     );
   });
+
+  it("destroys and recreates factory-provided Actorble instances", async () => {
+    const instances: ActorbleActions[] = [];
+    const createActorble = vi.fn(() => {
+      const instance: ActorbleActions = {
+        moveTo: vi.fn(),
+        click: vi.fn(),
+        typeInto: vi.fn(),
+        destroy: vi.fn(),
+      };
+      instances.push(instance);
+      return instance;
+    });
+    const actor = new ActorbleActorAdapter(createActorble);
+
+    await actor.moveTo("#first");
+    actor.destroy();
+    await actor.moveTo("#second");
+
+    expect(createActorble).toHaveBeenCalledTimes(2);
+    expect(instances[0]?.destroy).toHaveBeenCalledOnce();
+    expect(instances[1]?.moveTo).toHaveBeenCalledWith({ kind: "css", selector: "#second" });
+  });
 });

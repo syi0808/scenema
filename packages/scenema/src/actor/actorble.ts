@@ -37,6 +37,10 @@ export function resolveScenemaActorbleOptions(
   return {
     ...options,
     root: options.root ?? document,
+    pointer: {
+      initialPosition: viewportCenter(document),
+      ...options.pointer,
+    },
     actionDefaults: mergeActionDefaults(options.actionDefaults),
     visualLayer:
       options.visualLayer ??
@@ -47,6 +51,14 @@ export function resolveScenemaActorbleOptions(
           ? { textVisibility: options.feedback.text }
           : {}),
       }),
+  };
+}
+
+function viewportCenter(document: Document): { x: number; y: number } {
+  const viewport = document.defaultView;
+  return {
+    x: (viewport?.innerWidth ?? document.documentElement.clientWidth) / 2,
+    y: (viewport?.innerHeight ?? document.documentElement.clientHeight) / 2,
   };
 }
 

@@ -103,7 +103,7 @@ if (!(await scenema.bootstrap())) {
 
 Every document registers the same scenario and calls `bootstrap()`. If the current tab has an active session, Scenema restores it. Otherwise, `bootstrap()` returns `false` and the application can start a new session explicitly.
 
-Scenema creates an `@actorble/browser` instance by default and runs every interaction through its internal actor adapter. Actorble can be configured with the `actorble` option. Advanced integrations can still replace the internal boundary with a custom `Actor` through the `actor` option.
+Scenema creates an `@actorble/browser` instance lazily and runs every interaction through its internal actor adapter. The pointer starts at the center of the current viewport, and Scenema destroys the Actorble cursor and instance when the tour completes or stops. A later tour gets a fresh instance. Actorble can be configured with the `actorble` option. Advanced integrations can still replace the internal boundary with a custom `Actor` through the `actor` option.
 
 The built-in choreography uses perceptible pacing by default: after the user proceeds, automated clicks wait `300ms` before starting; after an automated action, the next cursor move pauses for `300ms`; pointer movement follows an `ease-in-out` curve for `800ms`; clicks approach over `1000ms` and hold for `240ms`; and typing waits `100ms` between characters. The Actorble cursor is rendered at `2x` its standard size for visibility. Override the pauses with `clickDelay` and `cursorMoveDelay`, override individual action values through `actorble.actionDefaults`, provide a custom `actorble.visualLayer` for different cursor rendering, or set `actorble.motion` to `false` when pointer motion should be disabled.
 

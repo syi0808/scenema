@@ -7,8 +7,9 @@ Scenema runtime과 scenario session은 별개의 lifetime을 가진다. 모든 n
 
 Scenema는 기본적으로 `@actorble/browser`를 생성하고 내부 `ActorbleActorAdapter`를 통해 모든 UI action을
 실행한다. Core runtime은 `Actor` port만 알기 때문에 대체 구현을 주입할 수 있지만, public runtime의 기본
-구성과 lifecycle은 Actorble에 결합된다. Scenema가 생성한 Actorble instance는 runtime `dispose()` 시 함께
-정리된다.
+구성과 lifecycle은 Actorble에 결합된다. Actorble instance는 첫 action에서 lazy 생성되며 pointer의 초기
+위치는 viewport 중앙이다. Tour가 완료 또는 중지되거나 runtime이 `dispose()`되면 cursor와 instance를 함께
+정리하고, 이후 tour에서는 새 instance를 생성한다.
 
 ```text
 checkpoint() -> perform() -> reconcile()

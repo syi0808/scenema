@@ -8,6 +8,23 @@ import {
 } from "../packages/scenema/src/actor/actorble.js";
 
 describe("Scenema Actorble defaults", () => {
+  it("starts the pointer at the center of the viewport", () => {
+    const options = resolveScenemaActorbleOptions(document);
+
+    expect(options.pointer?.initialPosition).toEqual({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+  });
+
+  it("preserves a custom initial pointer position", () => {
+    const options = resolveScenemaActorbleOptions(document, {
+      pointer: { initialPosition: { x: 120, y: 80 } },
+    });
+
+    expect(options.pointer?.initialPosition).toEqual({ x: 120, y: 80 });
+  });
+
   it("uses deliberate motion, click, and typing durations", () => {
     const options = resolveScenemaActorbleOptions(document);
 
