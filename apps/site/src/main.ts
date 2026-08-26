@@ -75,11 +75,11 @@ function renderLanding(): void {
   app.innerHTML = `
     <header class="site-header">
       <div class="shell site-header__inner">
-        <a class="wordmark" href="${sitePath("/")}" data-route aria-label="Scenema home"><span aria-hidden="true">S/</span> Scenema</a>
+        <a class="wordmark" href="${sitePath("/")}" data-route><img src="${sitePath("/assets/scenema-symbol.png")}" width="30" height="30" alt=""><span>Scenema</span></a>
         <nav class="site-nav" aria-label="Primary navigation">
           <a href="#model">The model</a>
           <a href="#protocol">Protocol</a>
-          <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
+          ${themeToggleMarkup()}
           <a class="button button--small" href="${sitePath("/demo/projects")}" data-route>Run live scenario</a>
         </nav>
       </div>
@@ -87,36 +87,25 @@ function renderLanding(): void {
     <main id="main">
       <section class="hero shell" aria-labelledby="hero-title">
         <div class="hero__copy">
-          <p class="overline"><span>Product choreography</span><span>Web runtime</span></p>
-          <h1 id="hero-title">Direct the<br><em>real</em> product.</h1>
-          <p class="hero__lead">Scenema turns live interfaces into guided sequences. Your user calls the next scene. Scenema moves, types, clicks, and keeps the story intact across navigation.</p>
+          <h1 id="hero-title">Guide people through the <em>real</em> product.</h1>
+          <p class="hero__lead">People choose when to continue. Scenema moves, types, clicks, and keeps the same scenario running across navigation.</p>
           <div class="hero__actions">
             <a class="button" href="${sitePath("/demo/projects")}" data-route>Run the live scenario <span aria-hidden="true">→</span></a>
             <a class="text-link" href="#model">Understand the model</a>
           </div>
         </div>
-        <div class="sequence" aria-label="Example scenario sequence">
-          <div class="sequence__head"><span>Scenario / create-project</span><span>3 scenes</span></div>
-          <ol>
-            <li class="is-active"><span class="sequence__index">01</span><div><strong>Projects</strong><code>/projects</code></div><span class="sequence__state">Current</span></li>
-            <li><span class="sequence__index">02</span><div><strong>Name project</strong><code>/projects/new</code></div><span class="sequence__action">Type</span></li>
-            <li><span class="sequence__index">03</span><div><strong>Project ready</strong><code>/projects/:slug</code></div><span class="sequence__action">Arrive</span></li>
-          </ol>
-          <div class="sequence__foot"><span>User: proceed</span><span>Scenema: perform →</span></div>
-        </div>
       </section>
 
       <section class="statement" id="model">
         <div class="shell statement__grid">
-          <p class="section-index">01 / The model</p>
           <div class="statement__body">
-            <h2>Not a tour painted<br>over your interface.</h2>
+            <h2>Not a layer painted over your interface.</h2>
             <p>Scenema understands the interface itself. Each Scene matches a real route and visible state. Each Step acts on a real DOM target.</p>
           </div>
           <div class="model-lines">
-            <div><span>01</span><strong>People choose when.</strong><p>Every Step waits. Nothing races ahead of the person watching.</p></div>
-            <div><span>02</span><strong>Scenema performs how.</strong><p>Pointer, click, and type actions run against the live product.</p></div>
-            <div><span>03</span><strong>State survives the cut.</strong><p>Checkpoints restore the right Scene after SPA or full-page navigation.</p></div>
+            <div><strong>People choose when.</strong><p>Every Step waits. Nothing races ahead of the person watching.</p></div>
+            <div><strong>Scenema performs how.</strong><p>Pointer, click, and type actions run against the live product.</p></div>
+            <div><strong>Progress survives navigation.</strong><p>Checkpoints restore the right Scene after route or full-page changes.</p></div>
           </div>
         </div>
       </section>
@@ -124,16 +113,15 @@ function renderLanding(): void {
       <section class="protocol-section" id="protocol">
         <div class="shell">
           <div class="protocol-heading">
-            <p class="section-index">02 / Runtime protocol</p>
-            <h2>One sequence.<br>Every navigation model.</h2>
-            <p>SPA runtimes continue. MPA runtimes restart. The protocol stays the same, so the scenario remains portable.</p>
+            <h2>One protocol across every page.</h2>
+            <p>The runtime may continue or restart after navigation. The scenario follows the same sequence either way.</p>
           </div>
           <ol class="protocol" aria-label="Scenema runtime protocol">
-            <li><span>01</span><strong>Present</strong><small>Show the current Step</small></li>
-            <li><span>02</span><strong>Proceed</strong><small>Wait for user intent</small></li>
-            <li><span>03</span><strong>Checkpoint</strong><small>Persist before action</small></li>
-            <li><span>04</span><strong>Perform</strong><small>Act on the product</small></li>
-            <li><span>05</span><strong>Reconcile</strong><small>Resolve the next Scene</small></li>
+            <li><strong>Present</strong><span>Show the current Step</span></li>
+            <li><strong>Proceed</strong><span>Wait for user intent</span></li>
+            <li><strong>Checkpoint</strong><span>Persist before action</span></li>
+            <li><strong>Perform</strong><span>Act on the product</span></li>
+            <li><strong>Reconcile</strong><span>Resolve the next Scene</span></li>
           </ol>
         </div>
       </section>
@@ -141,13 +129,12 @@ function renderLanding(): void {
       <section class="definition-section">
         <div class="shell definition-grid">
           <div class="definition-copy">
-            <p class="section-index">03 / Define once</p>
-            <h2>The route is part of the script.</h2>
-            <p>Define stable UI states, targets, and transitions. Scenema handles the document lifetime underneath.</p>
+            <h2>The route is part of the scenario.</h2>
+            <p>Define stable interface states, targets, and transitions. Scenema handles the document lifetime underneath.</p>
             <a class="text-link" href="${sitePath("/demo/projects")}" data-route>See this scenario run →</a>
           </div>
           <div class="code-window" aria-label="Scenario TypeScript example">
-            <div class="code-window__bar"><span>create-project.ts</span><span>TypeScript</span></div>
+            <div class="code-window__bar">create-project.ts</div>
             <pre><code><span class="code-key">defineScenario</span>({
   id: <span class="code-string">"create-project"</span>,
   scenes: [{
@@ -168,12 +155,11 @@ function renderLanding(): void {
 
       <section class="final-section">
         <div class="shell final-cta">
-          <div><p class="section-index">Next scene</p><h2>Watch the interface<br>tell the story.</h2></div>
+          <h2>See it run on a real interface.</h2>
           <a class="button button--light" href="${sitePath("/demo/projects")}" data-route>Run the live scenario <span aria-hidden="true">→</span></a>
         </div>
       </section>
-    </main>
-    <footer class="shell site-footer"><span><strong>Scenema</strong> / Product choreography runtime</span><span>Persist → Perform → Reconcile</span></footer>`;
+    </main>`;
   bindThemeToggle();
 }
 
@@ -183,20 +169,20 @@ function renderDemoShell(): void {
     <div class="demo-page">
       <header class="demo-header">
         <div class="shell demo-header__inner">
-          <a class="wordmark" href="${sitePath("/")}" data-route aria-label="Scenema home"><span aria-hidden="true">S/</span> Scenema</a>
-          <span class="demo-header__label">Live scenario / Create project</span>
+          <a class="wordmark" href="${sitePath("/")}" data-route><img src="${sitePath("/assets/scenema-symbol.png")}" width="30" height="30" alt=""><span>Scenema</span></a>
+          <span class="demo-header__label">Live scenario</span>
           <div class="demo-header__actions">
             <button class="text-button" id="reset-demo" type="button">Reset demo</button>
-            <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
+            ${themeToggleMarkup()}
             <a class="button button--small button--secondary" href="${sitePath("/")}" data-route>Exit</a>
           </div>
         </div>
       </header>
       <main id="main" class="demo-layout">
-        <aside class="demo-sidebar"><span class="demo-sidebar__label">Demo application</span><strong>Northstar</strong><nav aria-label="Demo workspace"><a href="${sitePath("/demo/projects")}" data-demo-route aria-current="page">Projects <span>02</span></a></nav></aside>
+        <aside class="demo-sidebar"><strong>Northstar</strong><nav aria-label="Demo workspace"><a href="${sitePath("/demo/projects")}" data-demo-route aria-current="page">Projects</a></nav></aside>
         <section class="demo-workspace" id="demo-workspace"></section>
       </main>
-      <div class="demo-status" role="status" aria-live="polite"><span>Status</span><p id="demo-status">Loading demo…</p></div>
+      <p class="demo-status" id="demo-status" role="status" aria-live="polite">Loading demo…</p>
     </div>`;
   bindThemeToggle();
   document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
@@ -212,7 +198,7 @@ function renderDemoContent(): void {
   if (!workspace) return;
   if (routePath() === "/demo/projects/new") {
     workspace.innerHTML = `
-      <div class="workspace-header"><div><span class="workspace-kicker">Projects / New</span><h1>New project</h1></div></div>
+      <div class="workspace-header"><h1>New project</h1></div>
       <form class="form" id="project-form" novalidate>
         <div class="field"><label for="project-name">Project name</label><input id="project-name" name="name" autocomplete="off" aria-describedby="name-help name-error"><small id="name-help">Use a name your team will recognize.</small></div>
         <p class="field-error" id="name-error" role="alert"></p>
@@ -245,7 +231,7 @@ function renderDemoContent(): void {
     return;
   }
   workspace.innerHTML = `
-    <div class="workspace-header"><div><span class="workspace-kicker">Workspace / 02 projects</span><h1>Projects</h1></div><button class="button" id="create-project" type="button">Create project</button></div>
+    <div class="workspace-header"><h1>Projects</h1><button class="button" id="create-project" type="button">Create project</button></div>
     <div class="project-list" id="project-list"><div class="project-row"><div><strong>Website refresh</strong><span>Design and engineering</span></div><span>12 members</span></div><div class="project-row"><div><strong>Research library</strong><span>Customer insights</span></div><span>6 members</span></div></div>`;
   document
     .querySelector("#create-project")
@@ -320,6 +306,13 @@ function setDemoStatus(message: string, error = false): void {
   status.style.color = error ? "var(--danger)" : "";
 }
 
+function themeToggleMarkup(): string {
+  return `<button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme" title="Switch theme">
+    <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.4 8.4 0 0 1 8.8 4a8.4 8.4 0 1 0 11.2 11.2Z"/></svg>
+    <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></svg>
+  </button>`;
+}
+
 function applySavedTheme(): void {
   const savedTheme = localStorage.getItem(themeKey);
   if (savedTheme === "light" || savedTheme === "dark") {
@@ -336,18 +329,25 @@ function activeTheme(): "light" | "dark" {
 function bindThemeToggle(): void {
   const buttons = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
   const updateLabels = (): void => {
-    const nextTheme = activeTheme() === "dark" ? "Light" : "Dark";
+    const currentTheme = activeTheme();
+    const nextTheme = currentTheme === "dark" ? "Light" : "Dark";
     buttons.forEach((button) => {
-      button.textContent = `${nextTheme} mode`;
       button.setAttribute("aria-label", `Switch to ${nextTheme.toLowerCase()} mode`);
+      button.setAttribute("title", `Switch to ${nextTheme.toLowerCase()} mode`);
+      button.dataset.currentTheme = currentTheme;
     });
+    document
+      .querySelector<HTMLMetaElement>("meta[name='theme-color']")
+      ?.setAttribute("content", currentTheme === "dark" ? "#0c0d0f" : "#f1f0eb");
   };
   buttons.forEach((button) => {
     button.addEventListener("click", () => {
       const nextTheme = activeTheme() === "dark" ? "light" : "dark";
+      document.documentElement.classList.add("theme-changing");
       document.documentElement.dataset.theme = nextTheme;
       localStorage.setItem(themeKey, nextTheme);
       updateLabels();
+      requestAnimationFrame(() => document.documentElement.classList.remove("theme-changing"));
     });
   });
   updateLabels();
