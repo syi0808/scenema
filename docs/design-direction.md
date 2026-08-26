@@ -15,7 +15,7 @@ The visual identity uses the product's own language—Scene, Step, action, and n
 
 ## Visual System
 
-- **Palette:** near-black, warm paper, cool gray, and one electric blue. Red and green appear only for error and success.
+- **Palette:** use the semantic tokens and contrast rules in [`color-palette.md`](./color-palette.md). Brand blue marks action and progress; red and green appear only for error and success.
 - **Type:** a compact system sans for statements, readable sans for body copy, and monospace only for code. Interface copy is never set in all caps.
 - **Shape:** square edges and thin rules. A small radius is reserved for controls and form fields where it improves affordance.
 - **Brand asset:** `apps/site/public/assets/scenema-symbol.png` is the only symbol. Do not redraw, reinterpret, or substitute it.

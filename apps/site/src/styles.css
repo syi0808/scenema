@@ -1,19 +1,23 @@
 :root {
   color-scheme: light;
-  --bg: #f1f0eb;
-  --surface: #fbfaf5;
-  --text: #101114;
-  --muted: #64666d;
-  --line: #c8c7c1;
-  --accent: #1847ff;
-  --accent-text: #fff;
-  --inverse: #0c0d0f;
-  --inverse-text: #f3f2ed;
-  --code-bg: #0c0d0f;
-  --code-text: #f3f2ed;
-  --success: #147447;
-  --danger: #b32d23;
-  --header-bg: rgba(241, 240, 235, 0.96);
+  --brand: #1e4fff;
+  --brand-hover: #153eea;
+  --brand-text: #ffffff;
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #111522;
+  --muted: #5f6677;
+  --line: #d5d9e2;
+  --accent: #1e4fff;
+  --accent-text: #ffffff;
+  --panel: #090c13;
+  --panel-text: #f5f7ff;
+  --panel-muted: #a8b0c0;
+  --panel-line: #2d3442;
+  --success: #13744a;
+  --danger: #b42318;
+  --selection: #dce5ff;
+  --header-bg: rgba(246, 247, 251, 0.96);
   font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,44 +25,42 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0c0d0f;
-  --surface: #141518;
-  --text: #f3f2ed;
-  --muted: #a5a6ac;
-  --line: #3c3e43;
-  --accent: #5274ff;
-  --accent-text: #fff;
-  --inverse: #f3f2ed;
-  --inverse-text: #0c0d0f;
-  --code-bg: #050506;
-  --code-text: #f3f2ed;
-  --success: #62c991;
-  --danger: #ff8075;
-  --header-bg: rgba(12, 13, 15, 0.96);
+  --bg: #090c13;
+  --surface: #121722;
+  --text: #f5f7ff;
+  --muted: #a8b0c0;
+  --line: #2d3442;
+  --accent: #7692ff;
+  --accent-text: #090c13;
+  --success: #61d79b;
+  --danger: #ff8178;
+  --selection: #26386f;
+  --header-bg: rgba(9, 12, 19, 0.96);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0c0d0f;
-    --surface: #141518;
-    --text: #f3f2ed;
-    --muted: #a5a6ac;
-    --line: #3c3e43;
-    --accent: #5274ff;
-    --accent-text: #fff;
-    --inverse: #f3f2ed;
-    --inverse-text: #0c0d0f;
-    --code-bg: #050506;
-    --code-text: #f3f2ed;
-    --success: #62c991;
-    --danger: #ff8075;
-    --header-bg: rgba(12, 13, 15, 0.96);
+    --bg: #090c13;
+    --surface: #121722;
+    --text: #f5f7ff;
+    --muted: #a8b0c0;
+    --line: #2d3442;
+    --accent: #7692ff;
+    --accent-text: #090c13;
+    --success: #61d79b;
+    --danger: #ff8178;
+    --selection: #26386f;
+    --header-bg: rgba(9, 12, 19, 0.96);
   }
 }
 
 * {
   box-sizing: border-box;
+}
+::selection {
+  color: var(--text);
+  background: var(--selection);
 }
 html {
   scroll-behavior: smooth;
@@ -72,6 +74,7 @@ body {
 button,
 input {
   font: inherit;
+  caret-color: var(--accent);
 }
 button,
 a {
@@ -132,11 +135,11 @@ a {
   object-fit: contain;
 }
 :root[data-theme="dark"] .wordmark img {
-  background: #f3f2ed;
+  background: var(--panel-text);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .wordmark img {
-    background: #f3f2ed;
+    background: var(--panel-text);
   }
 }
 .site-nav {
@@ -218,18 +221,18 @@ a {
   justify-content: space-between;
   gap: 28px;
   padding: 0 18px;
-  border: 1px solid var(--text);
+  border: 1px solid var(--brand);
   border-radius: 2px;
-  color: var(--bg);
-  background: var(--text);
+  color: var(--brand-text);
+  background: var(--brand);
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
 }
 .button:hover {
-  color: var(--accent-text);
-  border-color: var(--accent);
-  background: var(--accent);
+  color: var(--brand-text);
+  border-color: var(--brand-hover);
+  background: var(--brand-hover);
 }
 .button:active {
   transform: scale(0.96);
@@ -240,7 +243,13 @@ a {
 }
 .button--secondary {
   color: var(--text);
+  border-color: var(--text);
   background: transparent;
+}
+.button--secondary:hover {
+  color: var(--bg);
+  border-color: var(--text);
+  background: var(--text);
 }
 .button--small {
   min-height: 40px;
@@ -249,9 +258,15 @@ a {
   font-size: 13px;
 }
 .button--light {
-  color: #0c0d0f;
-  border-color: #f3f2ed;
-  background: #f3f2ed;
+  color: var(--panel);
+  border-color: var(--panel-text);
+  background: var(--panel-text);
+}
+.button--light:hover {
+  color: var(--panel);
+  border-color: var(--panel-text);
+  background: var(--panel-text);
+  opacity: 0.88;
 }
 .text-link {
   display: inline-flex;
@@ -355,8 +370,8 @@ a {
 }
 
 .protocol-section {
-  color: var(--inverse-text);
-  background: var(--inverse);
+  color: var(--panel-text);
+  background: var(--panel);
 }
 .protocol-heading {
   display: grid;
@@ -365,20 +380,20 @@ a {
   align-items: end;
 }
 .protocol-heading > p:last-child {
-  color: color-mix(in srgb, var(--inverse-text) 62%, transparent);
+  color: var(--panel-muted);
 }
 .protocol {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   margin-top: 88px;
-  border-top: 1px solid color-mix(in srgb, var(--inverse-text) 30%, transparent);
+  border-top: 1px solid var(--panel-line);
 }
 .protocol li {
   min-height: 190px;
   display: flex;
   flex-direction: column;
   padding: 18px 18px 20px 0;
-  border-right: 1px solid color-mix(in srgb, var(--inverse-text) 30%, transparent);
+  border-right: 1px solid var(--panel-line);
 }
 .protocol li + li {
   padding-left: 18px;
@@ -388,7 +403,7 @@ a {
 }
 .protocol span {
   margin-top: 8px;
-  color: color-mix(in srgb, var(--inverse-text) 60%, transparent);
+  color: var(--panel-muted);
   font-size: 13px;
 }
 .protocol strong {
@@ -407,14 +422,14 @@ a {
 }
 .code-window {
   overflow: hidden;
-  color: var(--code-text);
+  color: var(--panel-text);
   border-top: 3px solid var(--accent);
-  background: var(--code-bg);
+  background: var(--panel);
 }
 .code-window__bar {
   padding: 14px 18px;
-  border-bottom: 1px solid #34363b;
-  color: #92949c;
+  border-bottom: 1px solid var(--panel-line);
+  color: var(--panel-muted);
   font:
     12px/1.4 ui-monospace,
     SFMono-Regular,
@@ -433,15 +448,15 @@ pre {
   tab-size: 2;
 }
 .code-key {
-  color: #7990ff;
+  color: #89a0ff;
 }
 .code-string {
-  color: #b8d9b1;
+  color: #91d7a2;
 }
 .final-section {
   padding-block: 110px;
-  color: #f3f2ed;
-  background: #1847ff;
+  color: var(--brand-text);
+  background: var(--brand);
 }
 .final-cta {
   display: flex;
@@ -648,7 +663,7 @@ pre {
     gap: 16px;
     padding: 0;
     border-right: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--inverse-text) 30%, transparent);
+    border-bottom: 1px solid var(--panel-line);
   }
   .protocol strong,
   .protocol span {

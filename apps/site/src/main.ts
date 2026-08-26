@@ -338,7 +338,7 @@ function bindThemeToggle(): void {
     });
     document
       .querySelector<HTMLMetaElement>("meta[name='theme-color']")
-      ?.setAttribute("content", currentTheme === "dark" ? "#0c0d0f" : "#f1f0eb");
+      ?.setAttribute("content", currentTheme === "dark" ? "#090c13" : "#f6f7fb");
   };
   buttons.forEach((button) => {
     button.addEventListener("click", () => {
