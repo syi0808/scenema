@@ -6,6 +6,10 @@
   "dependencies": {
     "@scenema/core": "workspace:*",
     "@scenema/presenter": "workspace:*",
-    "scenema": "workspace:*"
+    "scenema": "workspace:*",
+    "svelte": "^5.56.10"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.0"
   }
 }

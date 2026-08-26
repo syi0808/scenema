@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -8,6 +9,7 @@ const workspace = (path: string) => fileURLToPath(new URL(`../../${path}`, impor
 export default defineConfig({
   root,
   base: process.env.SCENEMA_BASE_PATH ?? "/",
+  plugins: [svelte()],
   resolve: {
     alias: {
       "@scenema/core": workspace("packages/core/src/index.ts"),

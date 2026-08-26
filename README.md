@@ -40,7 +40,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` for the landing page or `http://localhost:5173/demo/projects` to run the guided scenario.
+Open `http://localhost:5173` and run the guided scenario directly inside the landing page.
 
 ## Define a Scenario
 
@@ -162,12 +162,12 @@ The runtime never relies on `beforeunload` for critical persistence. SPA route c
 
 ## Landing & Live Demo
 
-The app in `apps/site` serves two purposes:
+The Svelte app in `apps/site` combines the product story and its proof:
 
-- `/` explains the runtime and its SPA/MPA model.
-- `/demo/projects` runs a complete project-creation scenario with cursor movement, typing, clicks, route transitions, progress feedback, and recovery.
+- `/` introduces the product and mounts the working demo in the same page.
+- `/try/projects` and its child paths run a complete project-creation scenario with cursor movement, typing, pathname transitions, progress feedback, and recovery while preserving the landing shell.
 
-The UI supports keyboard navigation, responsive layouts, light and dark themes, and reduced motion.
+The UI supports keyboard navigation, responsive layouts, reduced motion, and a tour overlay scoped to the demo surface.
 
 ## Development
 

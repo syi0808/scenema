@@ -29,12 +29,12 @@ beforeAll(async () => {
     window.setTimeout(() => callback(0), 0);
   document.body.innerHTML =
     '<a class="skip-link" href="#main">Skip to content</a><div id="app"></div>';
-  history.replaceState(null, "", "/demo/projects");
+  history.replaceState(null, "", "/");
   await import("../apps/site/src/main.ts");
 });
 
 function currentActorbleTarget(): Element | null {
-  if (location.pathname === "/demo/projects") return document.querySelector("#create-project");
+  if (location.pathname === "/try/projects") return document.querySelector("#create-project");
   const name = document.querySelector<HTMLInputElement>("#project-name");
   return name?.value === "Launch workspace" ? document.querySelector("#submit-project") : name;
 }
@@ -43,11 +43,11 @@ describe("landing demo", () => {
   it("runs the complete guided project scenario", async () => {
     await vi.waitFor(() => expect(document.querySelector("#start-tour")).not.toBeNull());
     (document.querySelector("#start-tour") as HTMLButtonElement).click();
-    await expectTourTitle("Create your first project");
+    await expectTourTitle("Create a project");
 
     clickTourNext();
-    await vi.waitFor(() => expect(location.pathname).toBe("/demo/projects/new"));
-    await expectTourTitle("Give the project a name");
+    await vi.waitFor(() => expect(location.pathname).toBe("/try/projects/new"));
+    await expectTourTitle("Name the project");
 
     clickTourNext();
     await expectTourTitle("Create the project");
@@ -56,7 +56,7 @@ describe("landing demo", () => {
     );
 
     clickTourBack();
-    await expectTourTitle("Give the project a name");
+    await expectTourTitle("Name the project");
 
     clickTourNext();
     await expectTourTitle("Create the project");
@@ -65,7 +65,7 @@ describe("landing demo", () => {
     );
 
     clickTourNext();
-    await vi.waitFor(() => expect(location.pathname).toBe("/demo/projects/launch-workspace"));
+    await vi.waitFor(() => expect(location.pathname).toBe("/try/projects/launch-workspace"));
     await expectTourTitle("The scenario stayed with you");
     expect(document.querySelector("#project-ready")).not.toBeNull();
 

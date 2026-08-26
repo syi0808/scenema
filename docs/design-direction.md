@@ -1,39 +1,58 @@
-# Scenema Design Direction
+# Scenema Design System
 
-## Identity
+## Product Idea
 
-Scenema is a **director for product interfaces**. It does not place a tutorial on top of a product; it coordinates real interface states, actions, and navigation into a sequence the user can control.
-
-The visual identity uses the product's own language—Scene, Step, action, and navigation—without adding cinematic decoration. The result should feel precise, deliberate, and visibly in motion only when the product state changes.
+Scenema is a **quiet instrument for rehearsing product flows**. The interface should prove the product by letting visitors run a real scenario, not by surrounding it with cinematic language or abstract diagrams.
 
 ## Mood
 
-- **Direct, not cinematic decoration.** Clear type establishes the premise. Alignment and dividers explain sequence and state.
-- **Operational, not theatrical.** Blue marks the current action or primary path. Everything else stays neutral.
-- **Human-paced.** The interface clearly separates what the user decides from what Scenema performs.
-- **Confidently sparse.** Empty space creates reading order; it is never filled with ornamental graphics.
+- **Operational and calm.** Warm paper surfaces, clear rules, and compact labels create the order of a working tool.
+- **Evidence first.** The live product, current pathname, and scenario code carry more weight than marketing claims.
+- **Human-paced.** The guide clearly separates the moment a person chooses to continue from the action Scenema performs.
+- **Sparse, not oversized.** Space establishes reading order. Display type never becomes the product itself.
 
-## Visual System
+## Foundations
 
-- **Palette:** use the semantic tokens and contrast rules in [`color-palette.md`](./color-palette.md). Brand blue marks action and progress; red and green appear only for error and success.
-- **Type:** a compact system sans for statements, readable sans for body copy, and monospace only for code. Interface copy is never set in all caps.
-- **Shape:** square edges and thin rules. A small radius is reserved for controls and form fields where it improves affordance.
-- **Brand asset:** `apps/site/public/assets/scenema-symbol.png` is the only symbol. Do not redraw, reinterpret, or substitute it.
-- **Imagery:** product UI and scenario code are the proof. Stock photography, abstract blobs, and decorative film motifs do not belong.
-- **Motion:** only clarifies a changed scene, active step, or performed action. Reduced-motion users receive the same state information without movement.
+### Color
 
-## Interaction Hierarchy
+Use the semantic tokens in [`color-palette.md`](./color-palette.md). The default site has one canonical light appearance. Blue is reserved for the primary action, focus, and the active demo step.
 
-1. The primary action is always **Run the live scenario**.
-2. Secondary navigation explains the model without competing with the demo.
-3. Every button names its result. Icon-only controls are avoided.
-4. Loading, ready, resumed, success, and failure states are written into an `aria-live` status surface.
-5. Theme choice uses a familiar sun or moon icon, remains keyboard-operable, and is persisted.
+### Type
 
-## Content Rules
+The site uses one dependable system sans stack: `Helvetica Neue`, Helvetica, Arial, sans-serif. Monospace is limited to code, paths, step numbers, and compact metadata.
 
-- Use **Scene**, **Step**, **Action**, and **Checkpoint** consistently.
-- Explain the difference once: the user advances; Scenema performs.
-- Prefer evidence over claims: show the protocol, real code, and a working demo.
-- Remove metadata that does not change a decision.
-- Do not add an eyebrow, index, badge, card, or animation unless it communicates hierarchy, state, or action.
+| Role            | Desktop |  Mobile |  Weight | Line height |
+| --------------- | ------: | ------: | ------: | ----------: |
+| Display         | 52–72px | 48–68px |     680 |        0.98 |
+| Section heading | 38–58px | 38–52px |     660 |        1.06 |
+| Body lead       | 18–21px |    18px |     400 |        1.55 |
+| Body            |    17px |    16px |     400 |        1.65 |
+| UI              | 12–14px | 12–14px | 600–650 |         1.4 |
+
+Do not switch typefaces, styles, or colors for a single word inside a heading.
+
+### Spacing and Shape
+
+- Spacing follows a 4px scale: `4, 8, 12, 16, 24, 32, 48, 64, 96`.
+- The content container is 1200px with a 64px desktop and 32px mobile gutter.
+- Controls use a 6px radius; product and code frames use 10px.
+- Shadows belong only to the tour card. Borders define every other surface.
+
+## Components
+
+- `Button`: primary, secondary, and quiet variants share height, radius, type, and focus treatment.
+- `Header`: contains only product identity, two in-page landmarks, source link, and demo action.
+- `DemoStage`: combines route evidence, the working product surface, progress rail, and live status.
+- `TourCard`: uses the same palette, type, radii, and button hierarchy as the site and may be scoped to a container.
+- `EvidenceList`: replaces abstract framework language with three observable outcomes from the demo.
+- `CodePanel`: connects the visible route and target to the scenario definition.
+
+## Page Sequence
+
+1. State the benefit in plain language.
+2. Run the 30-second scenario inside the landing page.
+3. Explain what the visitor just observed.
+4. Show the scenario definition behind that interaction.
+5. Offer installation and source documentation.
+
+Do not add a protocol diagram, giant final banner, decorative browser chrome, theme toggle, card grid, or repeated CTA without a new decision to support.
