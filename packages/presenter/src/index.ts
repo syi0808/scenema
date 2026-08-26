@@ -34,7 +34,7 @@ interface OverlayRect {
 }
 
 interface OverlayController {
-  update(target: Element | null): void;
+  update(target: Element | null): OverlayRect | null;
 }
 
 const DEFAULT_OVERLAY: ResolvedOverlayOptions = {
@@ -153,8 +153,12 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
         : null;
       const updatePosition = () => {
         const target = context.target ? document.querySelector(context.target) : null;
-        positionCard(card, target, document);
-        overlayController?.update(target);
+        const highlight = overlayController?.update(target);
+        positionCard(
+          card,
+          highlight ?? (!overlayController && target ? elementRect(target) : null),
+          document,
+        );
       };
       updatePosition();
       document.defaultView?.addEventListener("resize", updatePosition);
@@ -201,18 +205,17 @@ function resolveOverlayOptions(
   };
 }
 
-function positionCard(card: HTMLElement, target: Element | null, document: Document): void {
-  if (!target) {
+function positionCard(card: HTMLElement, anchor: OverlayRect | null, document: Document): void {
+  if (!anchor) {
     card.style.left = "50%";
     card.style.top = "50%";
     card.style.transform = "translate(-50%, -50%)";
     return;
   }
   card.style.transform = "";
-  const rect = target.getBoundingClientRect();
   const { width, height } = viewportSize(document);
-  const left = Math.min(Math.max(16, rect.left), Math.max(16, width - 336));
-  const top = rect.bottom + 12;
+  const left = Math.min(Math.max(16, anchor.x), Math.max(16, width - 336));
+  const top = anchor.y + anchor.height + 12;
   card.style.left = `${left}px`;
   card.style.top = `${Math.max(16, Math.min(top, height - 180))}px`;
 }
@@ -261,10 +264,12 @@ function createOverlayController(
       ring.hidden = !highlight;
       if (!highlight) {
         setSvgRect(hole, collapsedRect(viewport));
-        return;
+        return null;
       }
+      scene.style.setProperty("--highlight-radius", `${highlight.radius}px`);
       setElementRect(ring, highlight.x, highlight.y, highlight.width, highlight.height);
       setSvgRect(hole, highlight);
+      return highlight;
     },
   };
 }
@@ -279,13 +284,53 @@ function targetOverlayRect(
   const y = clamp(rect.top - options.padding, 0, viewport.height);
   const right = clamp(rect.right + options.padding, x, viewport.width);
   const bottom = clamp(rect.bottom + options.padding, y, viewport.height);
+  const targetRadius = targetBorderRadius(target, rect);
   return {
     x,
     y,
     width: right - x,
     height: bottom - y,
-    radius: options.borderRadius,
+    radius: Math.max(options.borderRadius, targetRadius + options.padding),
   };
+}
+
+function elementRect(target: Element): OverlayRect {
+  const rect = target.getBoundingClientRect();
+  return {
+    x: rect.left,
+    y: rect.top,
+    width: rect.width,
+    height: rect.height,
+    radius: 0,
+  };
+}
+
+function targetBorderRadius(target: Element, rect: DOMRect): number {
+  const style = target.ownerDocument.defaultView?.getComputedStyle(target);
+  if (!style) return 0;
+  const corners = [
+    style.borderTopLeftRadius,
+    style.borderTopRightRadius,
+    style.borderBottomRightRadius,
+    style.borderBottomLeftRadius,
+  ];
+  const radii = corners.map((value) => cornerRadius(value, rect.width, rect.height));
+  const shorthandRadii = style.borderRadius
+    .split(/[\s/]+/)
+    .map((value) => radiusLength(value, Math.min(rect.width, rect.height)));
+  return Math.min(Math.max(...radii, ...shorthandRadii), rect.width / 2, rect.height / 2);
+}
+
+function cornerRadius(value: string, width: number, height: number): number {
+  const [horizontal = "0", vertical = horizontal] = value.trim().split(/\s+/);
+  return Math.min(radiusLength(horizontal, width), radiusLength(vertical, height));
+}
+
+function radiusLength(value: string, percentageBasis: number): number {
+  const match = /^(\d*\.?\d+)(px|%)$/.exec(value);
+  if (!match) return 0;
+  const amount = Number(match[1]);
+  return match[2] === "%" ? (amount / 100) * percentageBasis : amount;
 }
 
 function collapsedRect(viewport: { width: number; height: number }): OverlayRect {

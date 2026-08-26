@@ -64,6 +64,9 @@ describe("createTourPresenter overlay", () => {
     expect(ring.style.cssText).toContain("left: 90px");
     expect(ring.style.cssText).toContain("top: 110px");
     expect(ring.style.cssText).toContain("width: 220px");
+    const card = host.shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.style.left).toBe("90px");
+    expect(card.style.top).toBe("182px");
     expect(scene.style.getPropertyValue("--highlight-radius")).toBe("14px");
     expect(scene.style.getPropertyValue("--overlay-delay")).toBe("240ms");
     expect(scene.style.getPropertyValue("--popup-delay")).toBe("480ms");
@@ -100,6 +103,42 @@ describe("createTourPresenter overlay", () => {
     expect(root.querySelector(".overlay-surface")).not.toBeNull();
     expect(root.querySelector<HTMLElement>(".focus-ring")!.hidden).toBe(true);
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(false);
+  });
+
+  it.each([
+    { borderRadius: "12px", width: 100, height: 40, expected: "16" },
+    { borderRadius: "50%", width: 40, height: 40, expected: "24" },
+  ])("expands a target border radius with the highlight padding", (sample) => {
+    const target = document.querySelector<HTMLElement>("#target")!;
+    target.style.borderRadius = sample.borderRadius;
+    target.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 120, width: sample.width, height: sample.height });
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 4, borderRadius: 0 },
+    });
+
+    presenter.present(
+      { title: "Rounded target" },
+      {
+        sceneId: "projects",
+        stepId: "rounded",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const root = document.querySelector<HTMLElement>(
+      '[data-scenema-presenter="tour"]',
+    )!.shadowRoot!;
+    expect(root.querySelector(".mask-hole")!.getAttribute("rx")).toBe(sample.expected);
+    expect(
+      root.querySelector<HTMLElement>(".scene")!.style.getPropertyValue("--highlight-radius"),
+    ).toBe(`${sample.expected}px`);
   });
 
   it("preserves application inert state when releasing the interaction lock", () => {

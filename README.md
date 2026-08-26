@@ -122,6 +122,8 @@ createTourPresenter({
 ```
 
 Set `overlay: false` to keep the card without dimming or highlighting.
+The highlight preserves the target's corner shape and expands its radius by `padding` so circles
+remain circular. `borderRadius` acts as the minimum radius for the highlight.
 
 While a step has a `commit` or `transition`, the tour presenter makes the application inert until
 the user proceeds. This prevents pointer, keyboard, and focus interactions from racing ahead of the
