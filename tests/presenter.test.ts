@@ -60,22 +60,20 @@ describe("createTourPresenter overlay", () => {
     const host = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
     const scene = host.shadowRoot!.querySelector<HTMLElement>(".scene")!;
     const ring = host.shadowRoot!.querySelector<HTMLElement>(".focus-ring")!;
-    const hole = host.shadowRoot!.querySelector<SVGRectElement>(".mask-hole")!;
+    const hole = host.shadowRoot!.querySelector<SVGPathElement>(".mask-hole")!;
     expect(scene.dataset.phase).toBe("active");
     expect(host.shadowRoot!.querySelectorAll(".overlay-surface")).toHaveLength(1);
     expect(host.shadowRoot!.querySelectorAll('[class^="shade"]')).toHaveLength(0);
-    expect(hole.getAttribute("x")).toBe("90");
-    expect(hole.getAttribute("y")).toBe("110");
-    expect(hole.getAttribute("width")).toBe("220");
-    expect(hole.getAttribute("height")).toBe("60");
-    expect(hole.getAttribute("rx")).toBe("0");
+    expect(hole.getAttribute("d")).toBe(
+      "M 90 110 H 310 L 310 110 V 170 L 310 170 H 90 L 90 170 V 110 L 90 110 Z",
+    );
     expect(ring.style.cssText).toContain("left: 90px");
     expect(ring.style.cssText).toContain("top: 110px");
     expect(ring.style.cssText).toContain("width: 220px");
     const card = host.shadowRoot!.querySelector<HTMLElement>(".card")!;
     expect(card.style.left).toBe("90px");
     expect(card.style.top).toBe("182px");
-    expect(scene.style.getPropertyValue("--highlight-radius")).toBe("0px");
+    expect(ring.style.borderTopLeftRadius).toBe("0px");
     expect(scene.style.getPropertyValue("--overlay-delay")).toBe("240ms");
     expect(scene.style.getPropertyValue("--popup-delay")).toBe("480ms");
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
@@ -220,10 +218,57 @@ describe("createTourPresenter overlay", () => {
     const root = document.querySelector<HTMLElement>(
       '[data-scenema-presenter="tour"]',
     )!.shadowRoot!;
-    expect(root.querySelector(".mask-hole")!.getAttribute("rx")).toBe(sample.expected);
-    expect(
-      root.querySelector<HTMLElement>(".scene")!.style.getPropertyValue("--highlight-radius"),
-    ).toBe(`${sample.expected}px`);
+    const ring = root.querySelector<HTMLElement>(".focus-ring")!;
+    expect(ring.style.borderTopLeftRadius).toBe(`${sample.expected}px`);
+    expect(ring.style.borderTopRightRadius).toBe(`${sample.expected}px`);
+    expect(ring.style.borderBottomRightRadius).toBe(`${sample.expected}px`);
+    expect(ring.style.borderBottomLeftRadius).toBe(`${sample.expected}px`);
+    if (sample.expected === "0") {
+      expect(root.querySelector(".mask-hole")!.getAttribute("d")).not.toContain(" A ");
+    } else {
+      expect(root.querySelector(".mask-hole")!.getAttribute("d")).toContain(
+        `A ${sample.expected} ${sample.expected}`,
+      );
+    }
+  });
+
+  it("preserves asymmetric and elliptical target corner radii", () => {
+    const target = document.querySelector<HTMLElement>("#target")!;
+    target.style.borderRadius = "4px 12px 20px 28px / 6px 14px 22px 30px";
+    target.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 120, width: 200, height: 100 });
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 4, borderRadius: 0 },
+    });
+
+    presenter.present(
+      { title: "Asymmetrically rounded target" },
+      {
+        sceneId: "projects",
+        stepId: "asymmetric",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const root = document.querySelector<HTMLElement>(
+      '[data-scenema-presenter="tour"]',
+    )!.shadowRoot!;
+    const ring = root.querySelector<HTMLElement>(".focus-ring")!;
+    expect(ring.style.borderTopLeftRadius).toBe("8px 10px");
+    expect(ring.style.borderTopRightRadius).toBe("16px 18px");
+    expect(ring.style.borderBottomRightRadius).toBe("24px 26px");
+    expect(ring.style.borderBottomLeftRadius).toBe("32px 34px");
+    const path = root.querySelector(".mask-hole")!.getAttribute("d")!;
+    expect(path).toContain("A 8 10");
+    expect(path).toContain("A 16 18");
+    expect(path).toContain("A 24 26");
+    expect(path).toContain("A 32 34");
   });
 
   it("preserves application inert state when releasing the interaction lock", () => {
@@ -288,8 +333,7 @@ describe("createTourPresenter overlay", () => {
     expect(host.style.position).toBe("absolute");
     expect(host.style.width).toBe("800px");
     expect(host.style.height).toBe("600px");
-    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("x")).toBe("99");
-    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("y")).toBe("119");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("d")).toMatch(/^M 99 119/);
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
     expect(document.querySelector("#outside")!.hasAttribute("inert")).toBe(false);
   });

@@ -31,7 +31,19 @@ interface OverlayRect {
   y: number;
   width: number;
   height: number;
-  radius: number;
+  radii: CornerRadii;
+}
+
+interface CornerRadius {
+  x: number;
+  y: number;
+}
+
+interface CornerRadii {
+  topLeft: CornerRadius;
+  topRight: CornerRadius;
+  bottomRight: CornerRadius;
+  bottomLeft: CornerRadius;
 }
 
 interface OverlayController {
@@ -92,7 +104,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity);
             transition-delay: var(--overlay-delay); }
           .focus-ring { position: absolute; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
-            border-radius: var(--highlight-radius); box-shadow: 0 0 0 1px #0f172a66, 0 0 20px #fff4;
+            border-radius: 0; box-shadow: 0 0 0 1px #0f172a66, 0 0 20px #fff4;
             opacity: 0; transform: scale(.96); transition: opacity var(--overlay-duration) ease,
             transform var(--overlay-duration) cubic-bezier(.22, 1, .36, 1); }
           .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1);
@@ -129,7 +141,6 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
         "--popup-delay",
         `${(overlay?.delay ?? 0) + (overlay?.duration ?? 0)}ms`,
       );
-      scene.style.setProperty("--highlight-radius", `${overlay?.borderRadius ?? 0}px`);
       root.querySelector("h2")!.textContent = presentation.title;
       const description = root.querySelector("p")!;
       description.textContent = presentation.description ?? "";
@@ -261,7 +272,7 @@ function createOverlayController(
       <defs>
         <mask id="scenema-overlay-mask" maskUnits="userSpaceOnUse">
           <rect class="mask-field" fill="white"></rect>
-          <rect class="mask-hole" fill="black"></rect>
+          <path class="mask-hole" fill="black"></path>
         </mask>
       </defs>
       <rect class="overlay-surface" mask="url(#scenema-overlay-mask)"></rect>
@@ -270,7 +281,7 @@ function createOverlayController(
 
   const svg = root.querySelector<SVGSVGElement>(".overlay-svg")!;
   const field = root.querySelector<SVGRectElement>(".mask-field")!;
-  const hole = root.querySelector<SVGRectElement>(".mask-hole")!;
+  const hole = root.querySelector<SVGPathElement>(".mask-hole")!;
   const overlaySurface = root.querySelector<SVGRectElement>(".overlay-surface")!;
   const ring = root.querySelector<HTMLElement>(".focus-ring")!;
   let bounds = surfaceSize(document, container);
@@ -295,12 +306,12 @@ function createOverlayController(
       scene.dataset.hasTarget = String(Boolean(highlight));
       ring.hidden = !highlight;
       if (!highlight) {
-        setSvgRect(hole, collapsedRect(bounds));
+        setSvgPath(hole, collapsedRect(bounds));
         return null;
       }
-      scene.style.setProperty("--highlight-radius", `${highlight.radius}px`);
       setElementRect(ring, highlight.x, highlight.y, highlight.width, highlight.height);
-      setSvgRect(hole, highlight);
+      setElementRadii(ring, highlight.radii);
+      setSvgPath(hole, highlight);
       return highlight;
     },
   };
@@ -321,13 +332,13 @@ function targetOverlayRect(
   const y = clamp(top - options.padding, 0, surface.height);
   const right = clamp(left + rect.width + options.padding, x, surface.width);
   const bottom = clamp(top + rect.height + options.padding, y, surface.height);
-  const targetRadius = targetBorderRadius(target, rect);
+  const radii = expandRadii(targetBorderRadii(target, rect), options, right - x, bottom - y);
   return {
     x,
     y,
     width: right - x,
     height: bottom - y,
-    radius: targetRadius === 0 ? 0 : Math.max(options.borderRadius, targetRadius + options.padding),
+    radii,
   };
 }
 
@@ -339,29 +350,84 @@ function elementRect(target: Element, document: Document, container?: HTMLElemen
     y: rect.top + offset.top,
     width: rect.width,
     height: rect.height,
-    radius: 0,
+    radii: zeroCornerRadii(),
   };
 }
 
-function targetBorderRadius(target: Element, rect: DOMRect): number {
+function targetBorderRadii(target: Element, rect: DOMRect): CornerRadii {
   const style = target.ownerDocument.defaultView?.getComputedStyle(target);
-  if (!style) return 0;
-  const corners = [
-    style.borderTopLeftRadius,
-    style.borderTopRightRadius,
-    style.borderBottomRightRadius,
-    style.borderBottomLeftRadius,
-  ];
-  const radii = corners.map((value) => cornerRadius(value, rect.width, rect.height));
-  const shorthandRadii = style.borderRadius
-    .split(/[\s/]+/)
-    .map((value) => radiusLength(value, Math.min(rect.width, rect.height)));
-  return Math.min(Math.max(...radii, ...shorthandRadii), rect.width / 2, rect.height / 2);
+  if (!style) return zeroCornerRadii();
+  const shorthand = parseBorderRadius(style.borderRadius, rect.width, rect.height);
+  return {
+    topLeft: parseCornerRadius(
+      style.borderTopLeftRadius,
+      rect.width,
+      rect.height,
+      shorthand.topLeft,
+    ),
+    topRight: parseCornerRadius(
+      style.borderTopRightRadius,
+      rect.width,
+      rect.height,
+      shorthand.topRight,
+    ),
+    bottomRight: parseCornerRadius(
+      style.borderBottomRightRadius,
+      rect.width,
+      rect.height,
+      shorthand.bottomRight,
+    ),
+    bottomLeft: parseCornerRadius(
+      style.borderBottomLeftRadius,
+      rect.width,
+      rect.height,
+      shorthand.bottomLeft,
+    ),
+  };
 }
 
-function cornerRadius(value: string, width: number, height: number): number {
-  const [horizontal = "0", vertical = horizontal] = value.trim().split(/\s+/);
-  return Math.min(radiusLength(horizontal, width), radiusLength(vertical, height));
+function parseBorderRadius(value: string, width: number, height: number): CornerRadii {
+  const [horizontal = "", vertical = horizontal] = value.split("/").map((part) => part.trim());
+  const horizontalValues = expandRadiusValues(horizontal);
+  const verticalValues = expandRadiusValues(vertical);
+  return {
+    topLeft: {
+      x: radiusLength(horizontalValues[0], width),
+      y: radiusLength(verticalValues[0], height),
+    },
+    topRight: {
+      x: radiusLength(horizontalValues[1], width),
+      y: radiusLength(verticalValues[1], height),
+    },
+    bottomRight: {
+      x: radiusLength(horizontalValues[2], width),
+      y: radiusLength(verticalValues[2], height),
+    },
+    bottomLeft: {
+      x: radiusLength(horizontalValues[3], width),
+      y: radiusLength(verticalValues[3], height),
+    },
+  };
+}
+
+function expandRadiusValues(value: string): [string, string, string, string] {
+  const values = value.trim().split(/\s+/).filter(Boolean);
+  const [topLeft = "0", topRight = topLeft, bottomRight = topLeft, bottomLeft = topRight] = values;
+  return [topLeft, topRight, bottomRight, bottomLeft];
+}
+
+function parseCornerRadius(
+  value: string,
+  width: number,
+  height: number,
+  fallback: CornerRadius,
+): CornerRadius {
+  const values = value.trim().split(/\s+/).filter(Boolean);
+  if (values.length === 0) return fallback;
+  const [horizontalValue = "0", verticalValue = horizontalValue] = values;
+  const horizontal = radiusLength(horizontalValue, width);
+  const vertical = radiusLength(verticalValue, height);
+  return horizontal === 0 && vertical === 0 ? fallback : { x: horizontal, y: vertical };
 }
 
 function radiusLength(value: string, percentageBasis: number): number {
@@ -371,8 +437,64 @@ function radiusLength(value: string, percentageBasis: number): number {
   return match[2] === "%" ? (amount / 100) * percentageBasis : amount;
 }
 
+function expandRadii(
+  radii: CornerRadii,
+  options: ResolvedOverlayOptions,
+  width: number,
+  height: number,
+): CornerRadii {
+  const expanded = mapCornerRadii(radii, ({ x, y }) =>
+    x === 0 || y === 0
+      ? { x: 0, y: 0 }
+      : {
+          x: Math.max(options.borderRadius, x + options.padding),
+          y: Math.max(options.borderRadius, y + options.padding),
+        },
+  );
+  const horizontalTop = expanded.topLeft.x + expanded.topRight.x;
+  const horizontalBottom = expanded.bottomLeft.x + expanded.bottomRight.x;
+  const verticalLeft = expanded.topLeft.y + expanded.bottomLeft.y;
+  const verticalRight = expanded.topRight.y + expanded.bottomRight.y;
+  const scale = Math.min(
+    1,
+    horizontalTop > 0 ? width / horizontalTop : 1,
+    horizontalBottom > 0 ? width / horizontalBottom : 1,
+    verticalLeft > 0 ? height / verticalLeft : 1,
+    verticalRight > 0 ? height / verticalRight : 1,
+  );
+  return mapCornerRadii(expanded, ({ x, y }) => ({ x: x * scale, y: y * scale }));
+}
+
+function mapCornerRadii(
+  radii: CornerRadii,
+  transform: (radius: CornerRadius) => CornerRadius,
+): CornerRadii {
+  return {
+    topLeft: transform(radii.topLeft),
+    topRight: transform(radii.topRight),
+    bottomRight: transform(radii.bottomRight),
+    bottomLeft: transform(radii.bottomLeft),
+  };
+}
+
+function zeroCornerRadii(): CornerRadii {
+  const radius = () => ({ x: 0, y: 0 });
+  return {
+    topLeft: radius(),
+    topRight: radius(),
+    bottomRight: radius(),
+    bottomLeft: radius(),
+  };
+}
+
 function collapsedRect(viewport: { width: number; height: number }): OverlayRect {
-  return { x: viewport.width / 2, y: viewport.height / 2, width: 0, height: 0, radius: 0 };
+  return {
+    x: viewport.width / 2,
+    y: viewport.height / 2,
+    width: 0,
+    height: 0,
+    radii: zeroCornerRadii(),
+  };
 }
 
 function setElementRect(
@@ -388,12 +510,45 @@ function setElementRect(
   element.style.height = `${height}px`;
 }
 
-function setSvgRect(element: SVGRectElement, rect: OverlayRect): void {
-  element.setAttribute("x", String(rect.x));
-  element.setAttribute("y", String(rect.y));
-  element.setAttribute("width", String(rect.width));
-  element.setAttribute("height", String(rect.height));
-  element.setAttribute("rx", String(Math.min(rect.radius, rect.width / 2, rect.height / 2)));
+function setElementRadii(element: HTMLElement, radii: CornerRadii): void {
+  element.style.borderTopLeftRadius = cssRadius(radii.topLeft);
+  element.style.borderTopRightRadius = cssRadius(radii.topRight);
+  element.style.borderBottomRightRadius = cssRadius(radii.bottomRight);
+  element.style.borderBottomLeftRadius = cssRadius(radii.bottomLeft);
+}
+
+function cssRadius(radius: CornerRadius): string {
+  const horizontal = `${formatNumber(radius.x)}px`;
+  return radius.x === radius.y ? horizontal : `${horizontal} ${formatNumber(radius.y)}px`;
+}
+
+function setSvgPath(element: SVGPathElement, rect: OverlayRect): void {
+  const { x, y, width, height, radii } = rect;
+  const right = x + width;
+  const bottom = y + height;
+  const commands = [
+    `M ${formatNumber(x + radii.topLeft.x)} ${formatNumber(y)}`,
+    `H ${formatNumber(right - radii.topRight.x)}`,
+    cornerPath(radii.topRight, right, y + radii.topRight.y),
+    `V ${formatNumber(bottom - radii.bottomRight.y)}`,
+    cornerPath(radii.bottomRight, right - radii.bottomRight.x, bottom),
+    `H ${formatNumber(x + radii.bottomLeft.x)}`,
+    cornerPath(radii.bottomLeft, x, bottom - radii.bottomLeft.y),
+    `V ${formatNumber(y + radii.topLeft.y)}`,
+    cornerPath(radii.topLeft, x + radii.topLeft.x, y),
+    "Z",
+  ];
+  element.setAttribute("d", commands.join(" "));
+}
+
+function cornerPath(radius: CornerRadius, x: number, y: number): string {
+  return radius.x === 0 || radius.y === 0
+    ? `L ${formatNumber(x)} ${formatNumber(y)}`
+    : `A ${formatNumber(radius.x)} ${formatNumber(radius.y)} 0 0 1 ${formatNumber(x)} ${formatNumber(y)}`;
+}
+
+function formatNumber(value: number): string {
+  return String(Math.round(value * 1000) / 1000);
 }
 
 function surfaceSize(
