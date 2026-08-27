@@ -37,7 +37,10 @@ describe("Scenema Actorble defaults", () => {
       typeInto: {
         delay: 20,
         focusStrategy: "click",
-        focusClick: { pressDwell: 240 },
+        focusClick: {
+          motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
+          pressDwell: 240,
+        },
       },
     });
   });
@@ -89,7 +92,10 @@ describe("Scenema Actorble defaults", () => {
       typeInto: {
         delay: 20,
         focusStrategy: "click",
-        focusClick: { pressDwell: 240 },
+        focusClick: {
+          motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
+          pressDwell: 240,
+        },
       },
     });
   });
@@ -100,5 +106,17 @@ describe("Scenema Actorble defaults", () => {
     });
 
     expect(options.actionDefaults?.click).toEqual({ duration: 400, pressDwell: 240 });
+  });
+
+  it("replaces the typing focus-click motion profile with a duration override", () => {
+    const options = resolveScenemaActorbleOptions(document, {
+      actionDefaults: { typeInto: { focusClick: { duration: 400 } } },
+    });
+
+    expect(options.actionDefaults?.typeInto).toEqual({
+      delay: 20,
+      focusStrategy: "click",
+      focusClick: { duration: 400, pressDwell: 240 },
+    });
   });
 });

@@ -19,7 +19,10 @@ export const SCENEMA_ACTORBLE_ACTION_DEFAULTS = {
   typeInto: {
     delay: 20,
     focusStrategy: "click",
-    focusClick: { pressDwell: 240 },
+    focusClick: {
+      motion: { kind: "ease", timing: "ease-in-out", duration: 1000 },
+      pressDwell: 240,
+    },
   },
 } as const satisfies BrowserActionDefaults;
 
@@ -83,7 +86,7 @@ function mergeActionDefaults(overrides: BrowserActionDefaults = {}): BrowserActi
     ...overrides,
     moveTo: mergePointerActionDefaults(SCENEMA_ACTORBLE_ACTION_DEFAULTS.moveTo, overrides.moveTo),
     click: mergePointerActionDefaults(SCENEMA_ACTORBLE_ACTION_DEFAULTS.click, overrides.click),
-    typeInto: { ...SCENEMA_ACTORBLE_ACTION_DEFAULTS.typeInto, ...overrides.typeInto },
+    typeInto: mergeTypeIntoDefaults(SCENEMA_ACTORBLE_ACTION_DEFAULTS.typeInto, overrides.typeInto),
   };
 }
 
@@ -99,4 +102,17 @@ function mergePointerActionDefaults(
 
   const { duration: _duration, motion: _motion, ...nonMovementDefaults } = defaults;
   return { ...nonMovementDefaults, ...overrides };
+}
+
+type TypeIntoDefaults = NonNullable<BrowserActionDefaults["typeInto"]>;
+
+function mergeTypeIntoDefaults(
+  defaults: TypeIntoDefaults,
+  overrides: TypeIntoDefaults = {},
+): TypeIntoDefaults {
+  return {
+    ...defaults,
+    ...overrides,
+    focusClick: mergePointerActionDefaults(defaults.focusClick ?? {}, overrides.focusClick),
+  };
 }
