@@ -61,22 +61,28 @@ describe("landing content", () => {
 });
 
 describe("landing demos", () => {
-  it("introduces the real landing and clicks its code tab", async () => {
-    actorTargetSelector = "#code-tab-navigation";
+  it("uses Actorble actions from the first step", async () => {
+    actorTargetSelector = "#code-tab-dom-action";
     click("#start-tour");
-    await expectTourTitle("Guide a real product flow");
+    await expectTourTitle("Click a real control");
 
     clickTourNext();
-    await expectTourTitle("Run it on this page");
-    clickTourNext();
-    await expectTourTitle("Act on the real interface");
-    clickTourNext();
+    await vi.waitFor(() =>
+      expect(document.querySelector("#code-tab-dom-action")?.getAttribute("aria-selected")).toBe(
+        "true",
+      ),
+    );
+    await expectTourTitle("Continue with another action");
 
+    actorTargetSelector = "#code-tab-navigation";
+    clickTourNext();
     await vi.waitFor(() =>
       expect(document.querySelector("#code-tab-navigation")?.getAttribute("aria-selected")).toBe(
         "true",
       ),
     );
+    await expectTourTitle("The page responded");
+    clickTourNext();
     await expectTourTitle("Start with one scenario");
     clickTourNext();
     await vi.waitFor(() =>

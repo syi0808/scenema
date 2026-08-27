@@ -17,29 +17,30 @@
         match: { pathname: sitePath("/"), visible: "#hero-copy" },
         steps: [
           {
-            id: "product",
-            target: "#hero-copy",
+            id: "first-action",
+            target: "#code-tab-dom-action",
             present: {
-              title: "Guide a real product flow",
-              description: "Scenema connects guidance, DOM actions, and navigation in one scenario.",
-            },
-          },
-          {
-            id: "examples",
-            target: "#example-actions",
-            present: {
-              title: "Run it on this page",
-              description: "These examples use the page you are already viewing.",
-            },
-          },
-          {
-            id: "action",
-            target: "#code-tab-navigation",
-            present: {
-              title: "Act on the real interface",
-              description: "Continue and Scenema will select this code example.",
+              title: "Click a real control",
+              description: "Continue and Scenema will select the DOM action example.",
             },
             commit: { click: true },
+          },
+          {
+            id: "next-action",
+            target: "#code-tab-navigation",
+            present: {
+              title: "Continue with another action",
+              description: "Scenema moves to the next target and selects Navigation.",
+            },
+            commit: { click: true },
+          },
+          {
+            id: "result",
+            target: "#scenario-code-panel",
+            present: {
+              title: "The page responded",
+              description: "The code panel now shows the scenario for the selected action.",
+            },
           },
           {
             id: "start",

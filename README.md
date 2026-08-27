@@ -167,7 +167,7 @@ The Svelte app in `apps/site` combines the product story and its proof:
 
 - `/` is both the landing page and the target of the guided page tour.
 - Page tour, single highlight, and DOM action examples run against useful elements already on the landing page.
-- The main sequence introduces the product, examples, scenario code, and repository setup without a separate simulated product UI.
+- The main sequence uses Actorble to select two real code tabs from its opening steps, then connects the result to the scenario and repository setup.
 - DOM action and navigation recipes remain visible as code without fabricating inputs or routes solely for the demo.
 
 The UI supports keyboard navigation, responsive layouts, reduced motion, and independently runnable examples.

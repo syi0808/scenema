@@ -209,4 +209,4 @@ function reportUnexpected(error: unknown, options: ScenemaOptions, runtime: Scen
 }
 
 export * from "@scenema/core";
-export type { ScenemaActorbleOptions } from "./actor/actorble.js";
+export { createScenemaActorble, type ScenemaActorbleOptions } from "./actor/actorble.js";

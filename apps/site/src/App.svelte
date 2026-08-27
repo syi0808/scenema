@@ -10,10 +10,12 @@
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
   let landingDemo: LandingDemo | undefined = undefined;
+  let hero: Hero | undefined = undefined;
   let selectedCode = $state<CodeExampleId>("product-tour");
 
   function runDemo(id: DemoId, event?: MouseEvent): void {
     event?.preventDefault();
+    hero?.stopAmbientCursor();
     void landingDemo?.start(id);
   }
 
@@ -40,6 +42,7 @@
 
 <main id="main">
   <Hero
+    bind:this={hero}
     assetPath={sitePath("/assets/scenema-symbol.png")}
     onStart={(event) => runDemo("page-tour", event)}
   />
