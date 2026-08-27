@@ -83,6 +83,36 @@ describe("createTourPresenter overlay", () => {
     expect(host.isConnected).toBe(false);
   });
 
+  it("optionally draws a focus ring around the masked highlight", () => {
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 10, focusRing: true },
+    });
+
+    presenter.present(
+      { title: "Create a project" },
+      {
+        sceneId: "projects",
+        stepId: "create",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const root = document.querySelector<HTMLElement>(
+      '[data-scenema-presenter="tour"]',
+    )!.shadowRoot!;
+    const ring = root.querySelector<HTMLElement>(".focus-ring")!;
+    expect(ring.style.left).toBe("90px");
+    expect(ring.style.top).toBe("110px");
+    expect(ring.style.width).toBe("220px");
+    expect(ring.hidden).toBe(false);
+  });
+
   it("uses a fading full-screen overlay when a step has no target", () => {
     const presenter = createTourPresenter({ document });
 

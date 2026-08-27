@@ -117,11 +117,13 @@ createTourPresenter({
     opacity: 0.72,
     padding: 8,
     borderRadius: 10,
+    focusRing: false,
   },
 });
 ```
 
 Set `overlay: false` to keep the card without dimming or highlighting.
+Set `focusRing: true` to draw a border around the highlighted area; it is disabled by default.
 The highlight preserves the target's corner shape and expands a non-zero target radius by `padding`
 so circles remain circular. Targets without a radius keep a square highlight; for rounded targets,
 `borderRadius` acts as the minimum highlight radius.
