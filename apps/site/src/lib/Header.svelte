@@ -1,11 +1,5 @@
 <script lang="ts">
-  import Button from "./Button.svelte";
-
-  let {
-    onStart,
-    assetPath,
-    homePath,
-  }: { onStart: () => void; assetPath: string; homePath: string } = $props();
+  let { assetPath, homePath }: { assetPath: string; homePath: string } = $props();
 </script>
 
 <header class="site-header">
@@ -15,10 +9,8 @@
       <span>Scenema</span>
     </a>
     <nav class="site-nav" aria-label="Primary navigation">
-      <a href="#examples">Examples</a>
-      <a href="#scenario-code">Code</a>
+      <a href="https://github.com/syi0808/scenema#readme">Documentation</a>
       <a href="https://github.com/syi0808/scenema" rel="noreferrer">GitHub</a>
     </nav>
-    <Button label="Show demo" href="#examples" size="small" onclick={onStart} />
   </div>
 </header>

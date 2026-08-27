@@ -3,86 +3,50 @@
   import { createScenema, defineScenario, type Presenter, type Scenema } from "scenema";
   import { onMount, tick } from "svelte";
 
-  import type { ExampleId } from "./examples";
+  import type { DemoId } from "./examples";
 
-  let {
-    onPrepare,
-    onSelectExample,
-    onRunningChange,
-    onCompleted,
-  }: {
-    onPrepare: () => Promise<void>;
-    onSelectExample: (id: ExampleId) => void;
-    onRunningChange: (running: boolean, starting: boolean) => void;
-    onCompleted: () => void;
-  } = $props();
+  let { onPrepare }: { onPrepare: (id: DemoId) => void } = $props();
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
-  let runtime: Scenema | null = null;
-  let ready: Promise<void> = Promise.resolve();
-  let status = $state("Ready. Start the demo when you choose.");
-  let statusState = $state<"ready" | "error">("ready");
-  let starting = false;
-
-  const scenario = defineScenario({
-    id: "landing-page-demo",
+  const pageTour = defineScenario({
+    id: "landing-page-tour",
     version: 1,
     scenes: [
       {
         id: "landing",
-        match: { pathname: sitePath("/"), visible: "#hero-demo" },
+        match: { pathname: sitePath("/"), visible: "#hero-copy" },
         steps: [
           {
-            id: "introduction",
-            target: "#hero-demo",
+            id: "product",
+            target: "#hero-copy",
             present: {
-              title: "This page is the demo",
-              description: "Scenema will act on the controls already in front of you.",
+              title: "Guide a real product flow",
+              description: "Scenema connects guidance, DOM actions, and navigation in one scenario.",
             },
           },
           {
-            id: "click-action",
-            target: "#click-example-action",
+            id: "examples",
+            target: "#example-actions",
             present: {
-              title: "Perform a real click",
-              description: "Continue when you are ready. Scenema will click this button.",
+              title: "Run it on this page",
+              description: "These examples use the page you are already viewing.",
+            },
+          },
+          {
+            id: "action",
+            target: "#code-tab-navigation",
+            present: {
+              title: "Act on the real interface",
+              description: "Continue and Scenema will select this code example.",
             },
             commit: { click: true },
           },
           {
-            id: "type-value",
-            target: "#type-example-input",
+            id: "start",
+            target: "#getting-started-actions",
             present: {
-              title: "Type into the real field",
-              description: "The value is entered through the same DOM target a person uses.",
-            },
-            commit: { type: { value: "Launch workspace" } },
-            exit: { until: { value: "Launch workspace" } },
-          },
-          {
-            id: "change-route",
-            target: "#navigation-example-action",
-            present: {
-              title: "Continue on a new route",
-              description: "Scenema prepares the transition before the pathname changes.",
-            },
-            transition: { trigger: { click: true }, to: "navigation-complete" },
-          },
-        ],
-      },
-      {
-        id: "navigation-complete",
-        match: {
-          pathname: sitePath("/examples/navigation"),
-          visible: "#scenario-code-panel",
-        },
-        steps: [
-          {
-            id: "show-code",
-            target: "#scenario-code-panel",
-            present: {
-              title: "The scenario stayed with the page",
-              description: "The target, action, and route transition live in the same sequence.",
+              title: "Start with one scenario",
+              description: "The repository contains the runtime, presenter, and this live example.",
             },
           },
         ],
@@ -90,12 +54,74 @@
     ],
   });
 
-  const stepExamples: Partial<Record<string, ExampleId>> = {
-    "click-action": "click",
-    "type-value": "type",
-    "change-route": "navigation",
-    "show-code": "navigation",
+  const singleHighlight = defineScenario({
+    id: "landing-single-highlight",
+    version: 1,
+    scenes: [
+      {
+        id: "landing",
+        match: { pathname: sitePath("/"), visible: "#getting-started-actions" },
+        steps: [
+          {
+            id: "highlight",
+            target: "#getting-started-actions",
+            present: {
+              title: "Start from the repository",
+              description: "A single step can focus any stable element on the page.",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const domAction = defineScenario({
+    id: "landing-dom-action",
+    version: 1,
+    scenes: [
+      {
+        id: "landing",
+        match: { pathname: sitePath("/"), visible: "#code-tab-dom-action" },
+        steps: [
+          {
+            id: "click-tab",
+            target: "#code-tab-dom-action",
+            present: {
+              title: "Click a real control",
+              description: "Continue and Scenema will select the DOM action example.",
+            },
+            commit: { click: true },
+          },
+          {
+            id: "show-result",
+            target: "#scenario-code-panel",
+            present: {
+              title: "The interface responded",
+              description: "The same action can target controls inside your product.",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const scenarios = [pageTour, singleHighlight, domAction];
+  const scenarioIds: Record<DemoId, string> = {
+    "page-tour": pageTour.id,
+    "single-highlight": singleHighlight.id,
+    "dom-action": domAction.id,
   };
+  const focusTargets: Record<DemoId, string> = {
+    "page-tour": "#start-tour",
+    "single-highlight": "#run-single-highlight",
+    "dom-action": "#run-dom-action",
+  };
+
+  let runtime: Scenema | null = null;
+  let ready: Promise<void> = Promise.resolve();
+  let activeDemo: DemoId | null = null;
+  let starting = false;
+  let announcement = $state("");
 
   onMount(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -105,12 +131,7 @@
     });
     const presenter: Presenter = {
       async present(presentation, context) {
-        const example = stepExamples[context.stepId];
-        if (example) {
-          onSelectExample(example);
-          await tick();
-        }
-        const target = document.querySelector(context.target ?? "#hero-demo");
+        const target = document.querySelector(context.target ?? "#hero-copy");
         if (target) await scrollTargetIntoView(target, reduceMotion);
         await tick();
         return tourPresenter.present(presentation, context);
@@ -119,7 +140,7 @@
     };
 
     runtime = createScenema({
-      scenarios: [scenario],
+      scenarios,
       actorble: {
         feedback: "cursor",
         motion: !reduceMotion,
@@ -128,16 +149,17 @@
       presenter,
       logger(message) {
         if (!message.endsWith("scenario complete")) return;
-        status = "Demo complete. The landing page handled every action.";
-        onRunningChange(false, false);
-        onCompleted();
-        window.setTimeout(() => document.querySelector<HTMLElement>("#start-tour")?.focus(), 350);
+        const completedDemo = activeDemo;
+        activeDemo = null;
+        if (!completedDemo) return;
+        window.setTimeout(() =>
+          document.querySelector<HTMLElement>(focusTargets[completedDemo])?.focus(),
+        );
       },
       onError(error) {
-        status = `${error.message} Start the demo again to reset it.`;
-        statusState = "error";
+        announcement = error.message;
+        activeDemo = null;
         starting = false;
-        onRunningChange(false, false);
       },
     });
 
@@ -145,31 +167,31 @@
       .bootstrap()
       .then((restored) => {
         if (!restored) return;
-        status = "The demo continued at the current route.";
-        onRunningChange(true, false);
+        const scenarioId = runtime?.inspect().session?.scenarioId;
+        activeDemo =
+          (Object.entries(scenarioIds).find(([, id]) => id === scenarioId)?.[0] as
+            | DemoId
+            | undefined) ?? null;
       })
       .catch(() => undefined);
 
     return () => runtime?.dispose();
   });
 
-  export async function start(): Promise<void> {
+  export async function start(id: DemoId): Promise<void> {
     if (!runtime || starting) return;
     starting = true;
-    statusState = "ready";
-    status = "Preparing the landing page demo…";
-    onRunningChange(false, true);
+    announcement = "";
     await ready;
     runtime.stop();
-    await onPrepare();
+    onPrepare(id);
+    await tick();
+    activeDemo = id;
     try {
-      await runtime.start(scenario);
-      status = "Demo running. You choose when each action happens.";
-      onRunningChange(true, false);
+      await runtime.start(scenarioIds[id]);
     } catch (error) {
-      statusState = "error";
-      status = error instanceof Error ? error.message : "The demo could not start.";
-      onRunningChange(false, false);
+      announcement = error instanceof Error ? error.message : "The demo could not start.";
+      activeDemo = null;
     } finally {
       starting = false;
     }
@@ -217,4 +239,4 @@
   }
 </script>
 
-<p class="demo-status container" data-state={statusState} role="status" aria-live="polite">{status}</p>
+<p class="sr-only" role="status" aria-live="polite">{announcement}</p>

@@ -165,9 +165,10 @@ The runtime never relies on `beforeunload` for critical persistence. SPA route c
 
 The Svelte app in `apps/site` combines the product story and its proof:
 
-- `/` is both the landing page and the target of the guided demo.
-- `/examples/highlight`, `/examples/click`, `/examples/type`, and `/examples/navigation` keep the same landing shell while exposing each action directly.
-- The main sequence clicks a landing control, types into its field, changes the pathname, and finishes on the matching source code.
+- `/` is both the landing page and the target of the guided page tour.
+- Page tour, single highlight, and DOM action examples run against useful elements already on the landing page.
+- The main sequence introduces the product, examples, scenario code, and repository setup without a separate simulated product UI.
+- DOM action and navigation recipes remain visible as code without fabricating inputs or routes solely for the demo.
 
 The UI supports keyboard navigation, responsive layouts, reduced motion, and independently runnable examples.
 

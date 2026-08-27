@@ -1,103 +1,103 @@
-export type ExampleId = "highlight" | "click" | "type" | "navigation";
+export type DemoId = "page-tour" | "single-highlight" | "dom-action";
+export type CodeExampleId = "product-tour" | "dom-action" | "navigation";
 
-export interface ExampleDefinition {
-  id: ExampleId;
+export interface DemoDefinition {
+  id: DemoId;
   label: string;
-  title: string;
-  description: string;
-  path: string;
+}
+
+export interface CodeExampleDefinition {
+  id: CodeExampleId;
+  label: string;
+  filename: string;
   code: string;
 }
 
-export const examples: readonly ExampleDefinition[] = [
+export const demos: readonly DemoDefinition[] = [
+  { id: "page-tour", label: "Page tour" },
+  { id: "single-highlight", label: "Single highlight" },
+  { id: "dom-action", label: "DOM action" },
+];
+
+export const codeExamples: readonly CodeExampleDefinition[] = [
   {
-    id: "highlight",
-    label: "Highlight",
-    title: "Put one element in focus",
-    description: "Point to a stable target while the rest of the interface stays in context.",
-    path: "/examples/highlight",
-    code: `defineScenario({
-  id: "feature-highlight",
+    id: "product-tour",
+    label: "Product tour",
+    filename: "onboarding.ts",
+    code: `const onboarding = defineScenario({
+  id: "onboarding",
+  version: 1,
   scenes: [{
-    id: "home",
-    match: { pathname: "/" },
+    id: "projects",
+    match: { pathname: "/projects" },
     steps: [{
-      id: "highlight",
-      target: "#highlight-example-target",
-      present: {
-        title: "A new feature",
-        description: "Keep the product in context."
-      }
+      id: "create-project",
+      target: "#create-project",
+      present: { title: "Create a project" }
     }]
   }]
-})`,
+});
+
+const scenema = createScenema({
+  scenarios: [onboarding],
+  presenter: createTourPresenter()
+});
+
+await scenema.start(onboarding);`,
   },
   {
-    id: "click",
-    label: "Click",
-    title: "Perform the next click",
-    description: "Wait for the visitor, then click the real control and let the interface respond.",
-    path: "/examples/click",
-    code: `steps: [{
-  id: "run-action",
-  target: "#click-example-action",
-  present: {
-    title: "Run the action"
-  },
-  commit: { click: true },
-  exit: {
-    until: { visible: "#action-complete" }
-  }
-}]`,
+    id: "dom-action",
+    label: "DOM action",
+    filename: "actions.ts",
+    code: `steps: [
+  {
+    id: "create-project",
+    target: "#create-project",
+    present: { title: "Create a project" },
+    commit: { click: true }
   },
   {
-    id: "type",
-    label: "Type",
-    title: "Type into the real field",
-    description: "Fill a product field through the same DOM target a person would use.",
-    path: "/examples/type",
-    code: `steps: [{
-  id: "workspace-name",
-  target: "#type-example-input",
-  present: {
-    title: "Name the workspace"
-  },
-  commit: {
-    type: { value: "Launch workspace" }
-  },
-  exit: {
-    until: { value: "Launch workspace" }
+    id: "project-name",
+    target: "#project-name",
+    present: { title: "Name the project" },
+    commit: {
+      type: { value: "Launch workspace" }
+    },
+    exit: {
+      until: { value: "Launch workspace" }
+    }
   }
-}]`,
+]`,
   },
   {
     id: "navigation",
-    label: "Navigate",
-    title: "Continue across a new route",
-    description: "Prepare the transition, change the pathname, and continue the same sequence.",
-    path: "/examples/navigation",
-    code: `steps: [{
-  id: "open-next-route",
-  target: "#navigation-example-action",
-  present: {
-    title: "Continue to the next route"
+    label: "Navigation",
+    filename: "navigation.ts",
+    code: `scenes: [
+  {
+    id: "projects",
+    match: { pathname: "/projects" },
+    steps: [{
+      id: "open-project",
+      target: "#project-link",
+      transition: {
+        trigger: { click: true },
+        to: "project-detail"
+      }
+    }]
   },
-  transition: {
-    trigger: { click: true },
-    to: "navigation-complete"
+  {
+    id: "project-detail",
+    match: {
+      pathname: "/projects/launch",
+      visible: "#project-detail"
+    },
+    steps: [/* the same scenario continues */]
   }
-}]`,
+]`,
   },
 ];
 
-export function exampleById(id: ExampleId): ExampleDefinition {
-  return examples.find((example) => example.id === id)!;
-}
-
-export function exampleFromPath(path: string): ExampleId {
-  return examples.find((example) => example.path === path)?.id ?? "highlight";
-}
-
-export function isExamplePath(path: string): boolean {
-  return path === "/" || examples.some((example) => example.path === path);
+export function codeExampleById(id: CodeExampleId): CodeExampleDefinition {
+  return codeExamples.find((example) => example.id === id)!;
 }

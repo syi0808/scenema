@@ -2,39 +2,26 @@
   import Button from "./Button.svelte";
 
   let {
+    assetPath,
     onStart,
-    starting,
-    completed,
-  }: { onStart: (event?: MouseEvent) => void; starting: boolean; completed: boolean } = $props();
+  }: { assetPath: string; onStart: (event?: MouseEvent) => void } = $props();
 </script>
 
 <section class="hero" id="hero-demo" aria-labelledby="hero-title">
   <div class="container hero__grid">
-    <div class="hero__copy">
-      <p class="eyebrow">Programmable product guidance</p>
-      <h1 id="hero-title">Guide people through your real product.</h1>
-      <p>Scenema performs real clicks, typing, and navigation—one user-paced step at a time.</p>
+    <div class="hero__copy" id="hero-copy">
+      <h1 id="hero-title">Scenema</h1>
+      <p class="hero__lead">Guide people through real product flows.</p>
+      <p class="hero__description">
+        Connect user-paced guidance, real DOM actions, and page navigation in one declarative
+        scenario.
+      </p>
       <div class="hero__actions">
-        <Button
-          id="start-tour"
-          label={starting ? "Starting…" : completed ? "Run the demo again" : "Show the demo"}
-          href="#examples"
-          onclick={onStart}
-          disabled={starting}
-        />
-        <Button label="Get started" href="#scenario-code" variant="secondary" />
+        <Button id="start-tour" label="Show demo" href="#examples" onclick={onStart} />
+        <Button label="Get started" href="#get-started" variant="secondary" />
       </div>
     </div>
 
-    <div class="sequence-preview" role="group" aria-label="Scenema demo sequence">
-      <div class="sequence-preview__bar"><span>Live sequence</span><code>5 steps</code></div>
-      <ol>
-        <li><span>01</span><strong>Focus the current target</strong></li>
-        <li><span>02</span><strong>Click the real control</strong></li>
-        <li><span>03</span><strong>Type into the field</strong></li>
-        <li><span>04</span><strong>Continue on a new route</strong></li>
-        <li><span>05</span><strong>Connect the action to code</strong></li>
-      </ol>
-    </div>
+    <img class="hero__symbol" src={assetPath} alt="" width="420" height="420" />
   </div>
 </section>

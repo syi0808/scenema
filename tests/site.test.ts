@@ -2,6 +2,8 @@
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
+let actorTargetSelector = "#code-tab-navigation";
+
 beforeAll(async () => {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -20,9 +22,9 @@ beforeAll(async () => {
   Element.prototype.getBoundingClientRect = vi.fn(() =>
     DOMRect.fromRect({ x: 20, y: 20, width: 120, height: 32 }),
   );
-  document.elementFromPoint = vi.fn(() => currentActorbleTarget());
+  document.elementFromPoint = vi.fn(() => document.querySelector(actorTargetSelector));
   document.elementsFromPoint = vi.fn(() => {
-    const target = currentActorbleTarget();
+    const target = document.querySelector(actorTargetSelector);
     return target ? [target] : [];
   });
   window.requestAnimationFrame = (callback: FrameRequestCallback) =>
@@ -33,90 +35,80 @@ beforeAll(async () => {
   await import("../apps/site/src/main.ts");
 });
 
-function currentActorbleTarget(): Element | null {
-  return (
-    document.querySelector("#click-example-action") ??
-    document.querySelector("#type-example-input") ??
-    document.querySelector("#navigation-example-action") ??
-    document.querySelector("#scenario-code-panel") ??
-    document.querySelector("#hero-demo")
-  );
-}
+describe("landing content", () => {
+  it("keeps examples compact and connects code tabs to one panel", async () => {
+    await vi.waitFor(() => expect(document.querySelector("#run-page-tour")).not.toBeNull());
+    expect(document.querySelectorAll(".example-actions .button")).toHaveLength(3);
+    expect(document.querySelector("#click-example-count")).toBeNull();
+    expect(document.querySelector("#type-example-input")).toBeNull();
+    expect(document.querySelector(".feature-strip")).toBeNull();
+    expect(document.querySelector(".sequence-preview")).toBeNull();
+    expect(document.querySelector(".demo-status")).toBeNull();
 
-describe("landing examples", () => {
-  it("runs examples directly and keeps the selected route in sync", async () => {
-    await vi.waitFor(() => expect(document.querySelector("#example-tab-click")).not.toBeNull());
-    click("#example-tab-click");
-    expect(location.pathname).toBe("/examples/click");
-    await vi.waitFor(() => expect(document.querySelector("#click-example-action")).not.toBeNull());
-    click("#click-example-action");
+    click("#code-tab-dom-action");
     await vi.waitFor(() =>
-      expect(document.querySelector("#click-example-count")?.textContent).toContain("1"),
+      expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
+        'type: { value: "Launch workspace" }',
+      ),
     );
-
-    click("#example-tab-type");
-    expect(location.pathname).toBe("/examples/type");
-    await vi.waitFor(() => expect(document.querySelector("#type-example-input")).not.toBeNull());
-    const input = document.querySelector<HTMLInputElement>("#type-example-input")!;
-    input.value = "Direct example";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    expect(input.value).toBe("Direct example");
-
-    click("#example-tab-navigation");
+    click("#code-tab-navigation");
     await vi.waitFor(() =>
-      expect(document.querySelector("#navigation-example-action")).not.toBeNull(),
-    );
-    click("#navigation-example-action");
-    expect(location.pathname).toBe("/examples/navigation");
-    expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
-      "Navigate",
+      expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
+        'to: "project-detail"',
+      ),
     );
   });
 });
 
-describe("integrated landing demo", () => {
-  it("clicks, types, changes route, and connects the result to code", async () => {
+describe("landing demos", () => {
+  it("introduces the real landing and clicks its code tab", async () => {
+    actorTargetSelector = "#code-tab-navigation";
     click("#start-tour");
-    await expectTourTitle("This page is the demo");
+    await expectTourTitle("Guide a real product flow");
 
     clickTourNext();
-    await expectTourTitle("Perform a real click");
-
+    await expectTourTitle("Run it on this page");
     clickTourNext();
-    await expectTourTitle("Type into the real field");
-
-    clickTourBack();
-    await expectTourTitle("Perform a real click");
-    expect(document.querySelector("#click-example-count")?.textContent).toContain("1");
-
+    await expectTourTitle("Act on the real interface");
     clickTourNext();
-    await expectTourTitle("Type into the real field");
-    clickTourNext();
-    await expectTourTitle("Continue on a new route");
 
-    clickTourBack();
-    await expectTourTitle("Type into the real field");
-    expect((document.querySelector("#type-example-input") as HTMLInputElement).value).toBe(
-      "Launch workspace",
+    await vi.waitFor(() =>
+      expect(document.querySelector("#code-tab-navigation")?.getAttribute("aria-selected")).toBe(
+        "true",
+      ),
     );
-
-    clickTourNext();
-    await expectTourTitle("Continue on a new route");
-    clickTourNext();
-    await vi.waitFor(() => expect(location.pathname).toBe("/examples/navigation"));
-    await expectTourTitle("The scenario stayed with the page");
-    expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
-      "#navigation-example-action",
-    );
-
+    await expectTourTitle("Start with one scenario");
     clickTourNext();
     await vi.waitFor(() =>
       expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull(),
     );
+    expect(document.querySelector(".demo-status")).toBeNull();
+  });
+
+  it("runs the single highlight against the real getting-started block", async () => {
+    click("#run-single-highlight");
+    await expectTourTitle("Start from the repository");
+    clickTourNext();
     await vi.waitFor(() =>
-      expect(document.querySelector(".demo-status")?.textContent).toContain("Demo complete"),
+      expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull(),
     );
-    expect(document.querySelector("#start-tour")?.textContent).toBe("Run the demo again");
+  });
+
+  it("runs a DOM action against the real code tabs", async () => {
+    actorTargetSelector = "#code-tab-dom-action";
+    click("#run-dom-action");
+    await expectTourTitle("Click a real control");
+    clickTourNext();
+    await vi.waitFor(() =>
+      expect(document.querySelector("#code-tab-dom-action")?.getAttribute("aria-selected")).toBe(
+        "true",
+      ),
+    );
+    await expectTourTitle("The interface responded");
+    expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
+      'type: { value: "Launch workspace" }',
+    );
+    clickTourNext();
   });
 });
 
@@ -134,9 +126,4 @@ async function expectTourTitle(title: string): Promise<void> {
 function clickTourNext(): void {
   const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
   presenter.shadowRoot!.querySelector<HTMLButtonElement>(".next")!.click();
-}
-
-function clickTourBack(): void {
-  const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
-  presenter.shadowRoot!.querySelector<HTMLButtonElement>(".back")!.click();
 }
