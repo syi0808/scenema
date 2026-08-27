@@ -15,6 +15,8 @@ beforeEach(() => {
   Object.defineProperties(window, {
     scrollX: { configurable: true, value: 0 },
     scrollY: { configurable: true, value: 0 },
+    innerWidth: { configurable: true, value: 1024 },
+    innerHeight: { configurable: true, value: 768 },
   });
   Object.defineProperty(document.documentElement, "scrollHeight", {
     configurable: true,
@@ -81,6 +83,130 @@ describe("createTourPresenter overlay", () => {
     expect(host.isConnected).toBe(true);
     vi.advanceTimersByTime(240);
     expect(host.isConnected).toBe(false);
+  });
+
+  it("moves the card above a target near the viewport footer", () => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 });
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 540, width: 200, height: 40 });
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Footer action" },
+      {
+        sceneId: "landing",
+        stepId: "footer",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const card = document
+      .querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!
+      .shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.dataset.placement).toBe("top");
+    expect(card.style.left).toBe("90px");
+    expect(card.style.top).toBe("354px");
+  });
+
+  it("keeps a viable author placement preference", () => {
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 350, width: 200, height: 40 });
+    const presenter = createTourPresenter({
+      document,
+      preferredPlacement: ({ stepId }) => (stepId === "preferred" ? "top" : undefined),
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Preferred composition" },
+      {
+        sceneId: "landing",
+        stepId: "preferred",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const card = document
+      .querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!
+      .shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.dataset.placement).toBe("top");
+    expect(card.style.top).toBe("164px");
+  });
+
+  it("falls back when the author preference would cover the target", () => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 });
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 540, width: 200, height: 40 });
+    const presenter = createTourPresenter({
+      document,
+      preferredPlacement: "bottom",
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Safe fallback" },
+      {
+        sceneId: "landing",
+        stepId: "fallback",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const card = document
+      .querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!
+      .shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.dataset.placement).toBe("top");
+  });
+
+  it("keeps the current side while it remains viable after resizing", () => {
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 300, width: 200, height: 40 });
+    const presenter = createTourPresenter({ document, overlay: { padding: 10 } });
+
+    presenter.present(
+      { title: "Stable placement" },
+      {
+        sceneId: "landing",
+        stepId: "stable",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const card = document
+      .querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!
+      .shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.dataset.placement).toBe("bottom");
+
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 400 });
+    window.dispatchEvent(new Event("resize"));
+    expect(card.dataset.placement).toBe("top");
+
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    window.dispatchEvent(new Event("resize"));
+    expect(card.dataset.placement).toBe("top");
   });
 
   it("optionally draws a focus ring around the masked highlight", () => {
@@ -212,6 +338,39 @@ describe("createTourPresenter overlay", () => {
     const host = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
     const card = host.shadowRoot!.querySelector<HTMLElement>(".card")!;
     expect(card.style.top).toBe("1262px");
+  });
+
+  it("places a document-end card safely before its target scrolls into view", () => {
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      value: 2000,
+    });
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 1900, width: 200, height: 40 });
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Document footer" },
+      {
+        sceneId: "landing",
+        stepId: "document-footer",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const card = document
+      .querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!
+      .shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.dataset.placement).toBe("top");
+    expect(card.style.top).toBe("1714px");
   });
 
   it.each([

@@ -10,12 +10,17 @@ export interface TourOverlayOptions {
   duration?: number;
 }
 
+export type TourCardPlacement = "top" | "right" | "bottom" | "left";
+
 export interface TourPresenterOptions {
   document?: Document;
   container?: HTMLElement;
   nextLabel?: string;
   backLabel?: string;
   overlay?: boolean | TourOverlayOptions;
+  preferredPlacement?:
+    | TourCardPlacement
+    | ((context: PresenterContext) => TourCardPlacement | undefined);
 }
 
 interface ResolvedOverlayOptions {
@@ -52,6 +57,21 @@ interface OverlayController {
   update(target: Element | null): OverlayRect | null;
 }
 
+interface CardRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface PlacementCandidate {
+  placement: TourCardPlacement;
+  rect: CardRect;
+  overlap: number;
+  violation: number;
+  adjustment: number;
+}
+
 const DEFAULT_OVERLAY: ResolvedOverlayOptions = {
   color: "#020617",
   opacity: 0.72,
@@ -61,6 +81,12 @@ const DEFAULT_OVERLAY: ResolvedOverlayOptions = {
   delay: 240,
   duration: 320,
 };
+
+const CARD_GAP = 12;
+const CARD_HEIGHT_FALLBACK = 164;
+const CARD_WIDTH = 320;
+const VIEWPORT_PADDING = 16;
+const DEFAULT_PLACEMENTS: readonly TourCardPlacement[] = ["bottom", "top", "right", "left"];
 
 export function createTourPresenter(options: TourPresenterOptions = {}): Presenter {
   const document = options.document ?? window.document;
@@ -117,7 +143,8 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
             transition-delay: 0ms; }
           .card { position: absolute; z-index: 2; width: min(320px, calc(100% - 32px)); padding: 18px;
             box-sizing: border-box; color: #0f172a; background: #fff; border: 1px solid #94a3b8;
-            border-radius: 8px; box-shadow: 0 12px 32px #0f172a24; pointer-events: auto; opacity: 0;
+            border-radius: 8px; box-shadow: 0 12px 32px #0f172a24; overflow-y: auto;
+            pointer-events: auto; opacity: 0;
             transition: opacity var(--overlay-duration) ease; }
           .scene[data-phase="active"] .card { opacity: 1; transition-delay: var(--popup-delay); }
           h2 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.015em; } p { margin: 0 0 14px; color: #475569; }
@@ -169,18 +196,22 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const overlayController = overlay
         ? createOverlayController(overlayRoot, scene, document, overlay, container)
         : null;
+      const preferredPlacement = resolvePreferredPlacement(options.preferredPlacement, context);
+      let cardPlacement: TourCardPlacement | null = null;
       const updatePosition = () => {
         const surface = surfaceSize(document, container);
         host!.style.width = `${surface.width}px`;
         host!.style.height = `${surface.height}px`;
         const target = context.target ? document.querySelector(context.target) : null;
         const highlight = overlayController?.update(target);
-        positionCard(
+        cardPlacement = positionCard(
           card,
           highlight ??
             (!overlayController && target ? elementRect(target, document, container) : null),
           document,
           container,
+          preferredPlacement,
+          cardPlacement,
         );
       };
       updatePosition();
@@ -236,32 +267,185 @@ function positionCard(
   card: HTMLElement,
   anchor: OverlayRect | null,
   document: Document,
-  container?: HTMLElement,
-): void {
-  const viewport = scrollport(document, container);
+  container: HTMLElement | undefined,
+  preferredPlacement: TourCardPlacement | undefined,
+  currentPlacement: TourCardPlacement | null,
+): TourCardPlacement | null {
+  const currentViewport = scrollport(document, container);
+  const viewport = anchor
+    ? projectedScrollport(currentViewport, anchor, surfaceSize(document, container))
+    : currentViewport;
+  const cardSize = sizeCard(card, viewport);
   if (!anchor) {
+    delete card.dataset.placement;
     card.style.left = `${viewport.left + viewport.width / 2}px`;
     card.style.top = `${viewport.top + viewport.height / 2}px`;
     card.style.transform = "translate(-50%, -50%)";
-    return;
+    return null;
   }
   card.style.transform = "";
-  const horizontallyVisible =
-    anchor.x + anchor.width >= viewport.left && anchor.x <= viewport.left + viewport.width;
-  const verticallyVisible =
-    anchor.y + anchor.height >= viewport.top && anchor.y <= viewport.top + viewport.height;
-  const minimumLeft = viewport.left + 16;
-  const maximumLeft = Math.max(minimumLeft, viewport.left + viewport.width - 336);
-  const left = horizontallyVisible
-    ? Math.min(Math.max(minimumLeft, anchor.x), maximumLeft)
-    : anchor.x;
-  const top = anchor.y + anchor.height + 12;
-  card.style.left = `${left}px`;
-  card.style.top = `${
-    verticallyVisible
-      ? Math.max(viewport.top + 16, Math.min(top, viewport.top + viewport.height - 180))
-      : top
-  }px`;
+  const candidates = placementCandidates(anchor, cardSize, viewport);
+  const priority = placementPriority(preferredPlacement, currentPlacement);
+  const validCandidate = priority
+    .map((placement) => candidates.find((candidate) => candidate.placement === placement)!)
+    .find((candidate) => candidate.overlap === 0 && candidate.violation === 0);
+  const candidate = validCandidate ?? bestCompromise(candidates, priority);
+  card.dataset.placement = candidate.placement;
+  card.style.left = `${candidate.rect.x}px`;
+  card.style.top = `${candidate.rect.y}px`;
+  return candidate.placement;
+}
+
+function resolvePreferredPlacement(
+  preference: TourPresenterOptions["preferredPlacement"],
+  context: PresenterContext,
+): TourCardPlacement | undefined {
+  return typeof preference === "function" ? preference(context) : preference;
+}
+
+function sizeCard(
+  card: HTMLElement,
+  viewport: { width: number; height: number },
+): { width: number; height: number } {
+  const width = Math.max(0, Math.min(CARD_WIDTH, viewport.width - VIEWPORT_PADDING * 2));
+  const maximumHeight = Math.max(0, viewport.height - VIEWPORT_PADDING * 2);
+  card.style.width = `${width}px`;
+  card.style.maxHeight = `${maximumHeight}px`;
+  const measuredHeight = card.getBoundingClientRect().height;
+  return {
+    width,
+    height: Math.min(measuredHeight || CARD_HEIGHT_FALLBACK, maximumHeight),
+  };
+}
+
+function placementCandidates(
+  anchor: OverlayRect,
+  card: { width: number; height: number },
+  viewport: { left: number; top: number; width: number; height: number },
+): PlacementCandidate[] {
+  const minimumLeft = viewport.left + VIEWPORT_PADDING;
+  const minimumTop = viewport.top + VIEWPORT_PADDING;
+  const maximumLeft = Math.max(
+    minimumLeft,
+    viewport.left + viewport.width - VIEWPORT_PADDING - card.width,
+  );
+  const maximumTop = Math.max(
+    minimumTop,
+    viewport.top + viewport.height - VIEWPORT_PADDING - card.height,
+  );
+  const ideals: Record<TourCardPlacement, { x: number; y: number }> = {
+    top: { x: anchor.x, y: anchor.y - CARD_GAP - card.height },
+    right: { x: anchor.x + anchor.width + CARD_GAP, y: anchor.y },
+    bottom: { x: anchor.x, y: anchor.y + anchor.height + CARD_GAP },
+    left: { x: anchor.x - CARD_GAP - card.width, y: anchor.y },
+  };
+
+  return DEFAULT_PLACEMENTS.map((placement) => {
+    const ideal = ideals[placement];
+    const rect = {
+      x: clamp(ideal.x, minimumLeft, maximumLeft),
+      y: clamp(ideal.y, minimumTop, maximumTop),
+      ...card,
+    };
+    return {
+      placement,
+      rect,
+      overlap: intersectionArea(rect, anchor),
+      violation: placementViolation(placement, rect, anchor),
+      adjustment: Math.abs(rect.x - ideal.x) + Math.abs(rect.y - ideal.y),
+    };
+  });
+}
+
+function placementViolation(
+  placement: TourCardPlacement,
+  card: CardRect,
+  anchor: OverlayRect,
+): number {
+  switch (placement) {
+    case "top":
+      return Math.max(0, card.y + card.height - anchor.y);
+    case "right":
+      return Math.max(0, anchor.x + anchor.width - card.x);
+    case "bottom":
+      return Math.max(0, anchor.y + anchor.height - card.y);
+    case "left":
+      return Math.max(0, card.x + card.width - anchor.x);
+  }
+}
+
+function placementPriority(
+  preferredPlacement: TourCardPlacement | undefined,
+  currentPlacement: TourCardPlacement | null,
+): TourCardPlacement[] {
+  return Array.from(
+    new Set([preferredPlacement, currentPlacement, ...DEFAULT_PLACEMENTS].filter(Boolean)),
+  ) as TourCardPlacement[];
+}
+
+function bestCompromise(
+  candidates: PlacementCandidate[],
+  priority: TourCardPlacement[],
+): PlacementCandidate {
+  return [...candidates].sort(
+    (left, right) =>
+      left.overlap - right.overlap ||
+      left.violation - right.violation ||
+      left.adjustment - right.adjustment ||
+      priority.indexOf(left.placement) - priority.indexOf(right.placement),
+  )[0]!;
+}
+
+function intersectionArea(left: CardRect, right: CardRect): number {
+  const width = Math.max(
+    0,
+    Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x),
+  );
+  const height = Math.max(
+    0,
+    Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y),
+  );
+  return width * height;
+}
+
+function projectedScrollport(
+  viewport: { left: number; top: number; width: number; height: number },
+  anchor: OverlayRect,
+  surface: { width: number; height: number },
+): { left: number; top: number; width: number; height: number } {
+  return {
+    ...viewport,
+    left: projectedScrollOffset(
+      viewport.left,
+      viewport.width,
+      anchor.x,
+      anchor.width,
+      surface.width,
+    ),
+    top: projectedScrollOffset(
+      viewport.top,
+      viewport.height,
+      anchor.y,
+      anchor.height,
+      surface.height,
+    ),
+  };
+}
+
+function projectedScrollOffset(
+  offset: number,
+  viewportSize: number,
+  targetOffset: number,
+  targetSize: number,
+  surfaceSize: number,
+): number {
+  const targetEnd = targetOffset + targetSize;
+  if (targetEnd > offset && targetOffset < offset + viewportSize) return offset;
+  return clamp(
+    targetOffset + targetSize / 2 - viewportSize / 2,
+    0,
+    Math.max(0, surfaceSize - viewportSize),
+  );
 }
 
 function createOverlayController(

@@ -128,6 +128,23 @@ The highlight preserves the target's corner shape and expands a non-zero target 
 so circles remain circular. Targets without a radius keep a square highlight; for rounded targets,
 `borderRadius` acts as the minimum highlight radius.
 
+The presenter automatically keeps the card inside the visible scrollport without covering the
+highlighted target. It retains the current side while that placement remains viable and only moves
+the card when the viewport makes the placement invalid. An offscreen target is evaluated against
+the scroll position where it can be revealed, so targets near the end of a page receive the same
+protection before scrolling begins.
+
+Use `preferredPlacement` when a composition has an intentional direction. The preference wins when
+it remains visible and does not cover the target; otherwise the presenter falls back to a safe side.
+Pass a resolver to express a preference for individual steps without turning placement into scenario
+reading-order metadata:
+
+```ts
+createTourPresenter({
+  preferredPlacement: ({ stepId }) => (stepId === "footer-action" ? "top" : undefined),
+});
+```
+
 While a step has a `commit` or `transition`, the tour presenter makes the application inert until
 the user proceeds. This prevents pointer, keyboard, and focus interactions from racing ahead of the
 runtime. Informational steps without an automated action remain interactive.
