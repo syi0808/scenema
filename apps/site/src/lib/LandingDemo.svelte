@@ -243,7 +243,7 @@
     autoplaying = true;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const director = createScenemaActorble(document, {
-      feedback: "cursor",
+      feedback: isolated ? { cursor: { label: "User" } } : "cursor",
       motion: !reduceMotion,
       ...(reduceMotion
         ? {

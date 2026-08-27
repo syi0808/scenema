@@ -28,7 +28,7 @@
   function createCursor(): ReturnType<typeof createScenemaActorble> {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     return createScenemaActorble(document, {
-      feedback: "cursor",
+      feedback: embedded ? { cursor: { label: "Scenema" } } : "cursor",
       motion: !reduceMotion,
       ...(reduceMotion ? { actionDefaults: { typeInto: { delay: 0 } } } : {}),
     });

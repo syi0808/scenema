@@ -75,8 +75,8 @@ importers:
   packages/scenema:
     dependencies:
       '@actorble/browser':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.0.3
+        version: 0.0.3
       '@scenema/core':
         specifier: workspace:*
         version: link:../core
@@ -86,8 +86,8 @@ importers:
 
 packages:
 
-  '@actorble/browser@0.0.2':
-    resolution: {integrity: sha512-XeCtFAWozccusNg3w0pRNWbc59lCGDN6wgNYxc1UzKRkeethAddAVmvX4Viovov7nLZWGq3pWnTcgw5JmRzZUw==}
+  '@actorble/browser@0.0.3':
+    resolution: {integrity: sha512-RM76qLDrYnCmNbsOqiL1572irQCdlFZuRV/u44Gso1jI4U05fKslZ7s/O9JnwhAIXQpLNfhaXXb1QvL7nomx/Q==}
 
   '@asamuzakjp/css-color@6.0.7':
     resolution: {integrity: sha512-vC/bk1Lz7Tn/EfU9/apOTBk80/8dyGyWMowPoV1tJ52muDGsDqt2HPT2klrFUiY60MQmQv9q8yIht15JnBgDGw==}
@@ -1408,7 +1408,7 @@ packages:
 
 snapshots:
 
-  '@actorble/browser@0.0.2':
+  '@actorble/browser@0.0.3':
     dependencies:
       scroller2: 0.0.1
 
