@@ -1,5 +1,6 @@
 <script lang="ts">
   import CodeShowcase from "./lib/CodeShowcase.svelte";
+  import DemoPrompt from "./lib/DemoPrompt.svelte";
   import Examples from "./lib/Examples.svelte";
   import Footer from "./lib/Footer.svelte";
   import GettingStarted from "./lib/GettingStarted.svelte";
@@ -15,7 +16,6 @@
 
   function runDemo(id: DemoId, event?: MouseEvent): void {
     event?.preventDefault();
-    hero?.handoffAmbientCursor();
     void landingDemo?.start(id);
   }
 
@@ -57,6 +57,8 @@
 </main>
 
 <Footer />
+
+<DemoPrompt onRun={() => landingDemo?.autoplay()} />
 
 <LandingDemo
   bind:this={landingDemo}

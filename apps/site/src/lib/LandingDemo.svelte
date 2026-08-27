@@ -137,6 +137,7 @@
   let ready: Promise<void> = Promise.resolve();
   let activeDemo: DemoId | null = null;
   let starting = false;
+  let autoplaying = false;
   let announcement = $state("");
 
   onMount(() => {
@@ -229,6 +230,39 @@
     }
   }
 
+  export async function autoplay(): Promise<void> {
+    if (autoplaying) return;
+    autoplaying = true;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const director = createScenemaActorble(document, {
+      feedback: "cursor",
+      motion: !reduceMotion,
+      ...(reduceMotion
+        ? {
+            actionDefaults: {
+              click: { duration: 0, pressDwell: 0 },
+              moveTo: { duration: 0 },
+            },
+          }
+        : {}),
+    });
+
+    try {
+      await director.click(resolveTarget("#start-tour"), { force: true });
+      for (let step = 1; step <= pageTour.scenes[0].steps.length; step += 1) {
+        const next = await waitForTourControl(step, pageTour.scenes[0].steps.length);
+        await pause(reduceMotion ? 200 : 1_200);
+        await director.click(next, { force: true });
+      }
+      await waitForTourToClose();
+    } catch (error) {
+      announcement = error instanceof Error ? error.message : "The automatic demo stopped.";
+    } finally {
+      director.destroy();
+      autoplaying = false;
+    }
+  }
+
   function sitePath(path: string): string {
     if (!basePrefix) return path;
     return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
@@ -238,6 +272,35 @@
     const target = document.querySelector(selector);
     if (!target) throw new Error(`The demo target was not found: ${selector}`);
     return target;
+  }
+
+  async function waitForTourControl(step: number, total: number): Promise<HTMLButtonElement> {
+    return waitForElement(() => {
+      const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]');
+      if (presenter?.shadowRoot?.querySelector(".progress")?.textContent !== `${step} / ${total}`)
+        return null;
+      return presenter.shadowRoot.querySelector<HTMLButtonElement>(".next");
+    });
+  }
+
+  async function waitForTourToClose(): Promise<void> {
+    await waitForElement(() =>
+      document.querySelector('[data-scenema-presenter="tour"]') ? null : document.body,
+    );
+  }
+
+  async function waitForElement<T extends Element>(resolve: () => T | null): Promise<T> {
+    const timeoutAt = performance.now() + 10_000;
+    while (performance.now() < timeoutAt) {
+      const element = resolve();
+      if (element) return element;
+      await new Promise<void>((resume) => window.requestAnimationFrame(() => resume()));
+    }
+    throw new Error("The automatic demo could not find its next control.");
+  }
+
+  function pause(duration: number): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, duration));
   }
 
   async function scrollTargetIntoView(target: Element, reduceMotion: boolean): Promise<void> {

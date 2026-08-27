@@ -44,15 +44,21 @@ Driver.js 랜딩의 장점은 데모 UI가 정교해서가 아니라, **원래 �
 - 기본 CTA: `Show demo`
 - 보조 CTA: `Get started`
 - 우측에는 기존 Scenema 심볼을 브랜드 이미지로 사용
-- 데스크톱에서는 Actorble이 핵심 문장을 실제 텍스트 선택 동작으로 강조한 뒤 `Show demo`에서 대기한다.
-- 텍스트 선택과 CTA 이동은 한 번만 실행하며 별도 강조 효과나 무한 반복을 더하지 않는다.
-- 데모를 시작하면 선택 영역을 해제하고 같은 커서 인스턴스가 첫 타깃으로 이어진다.
-- 주변 연출은 실제 클릭을 발생시키지 않으며 스크롤·모바일·reduced motion에서는 표시하지 않는다.
+
+### 3.2.1 Entry prompt
+
+- 세션의 첫 방문에는 `See Scenema in action?` 모달을 표시한다.
+- 행동은 `Run demo`와 `Not now` 두 개만 제공한다.
+- `Run demo`를 선택하면 별도 Actorble이 Hero의 `Show demo`를 누르고 네 Step의 `Next`와 `Finish`를 끝까지 누른다.
+- Scenema 내부 Actorble은 선언된 DOM action을 그대로 실행한다. 두 Actorble 커서의 시각적 구분은 이번 범위에서 다루지 않는다.
+- 어느 쪽을 선택해도 같은 세션에서는 모달을 다시 표시하지 않는다.
+- 별도 설명, 카운트다운, 완료 문구는 추가하지 않는다.
 
 제거 대상:
 
 - `Programmable product guidance` eyebrow
 - `Live sequence` 5단계 미리보기
+- Hero에서 자동으로 움직이는 장식용 커서
 - 상시 노출되는 데모 상태 문구
 - 완료 후 `Run the demo again`으로 바뀌는 상태성 레이블
 

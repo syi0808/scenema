@@ -31,8 +31,36 @@ beforeAll(async () => {
     window.setTimeout(() => callback(0), 0);
   document.body.innerHTML =
     '<a class="skip-link" href="#main">Skip to content</a><div id="app"></div>';
+  window.sessionStorage.clear();
   history.replaceState(null, "", "/");
   await import("../apps/site/src/main.ts");
+});
+
+describe("automatic landing demo", () => {
+  it("asks for consent and drives the page tour through Finish", async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector(".demo-prompt")?.textContent).toContain(
+        "See Scenema in action?",
+      ),
+    );
+
+    actorTargetSelector = "#code-tab-dom-action";
+    clickButton("Run demo");
+    await expectTourTitle("Continue with another action");
+    actorTargetSelector = "#code-tab-navigation";
+
+    await vi.waitFor(
+      () => {
+        expect(document.querySelector(".demo-prompt")).toBeNull();
+        expect(document.querySelector("#code-tab-navigation")?.getAttribute("aria-selected")).toBe(
+          "true",
+        );
+        expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull();
+      },
+      { timeout: 5_000 },
+    );
+    expect(window.sessionStorage.getItem("scenema:demo-prompt-seen")).toBe("true");
+  }, 10_000);
 });
 
 describe("landing content", () => {
@@ -122,11 +150,22 @@ function click(selector: string): void {
   (document.querySelector(selector) as HTMLElement).click();
 }
 
+function clickButton(label: string): void {
+  const button = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  );
+  if (!button) throw new Error(`Button not found: ${label}`);
+  button.click();
+}
+
 async function expectTourTitle(title: string): Promise<void> {
-  await vi.waitFor(() => {
-    const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]');
-    expect(presenter?.shadowRoot?.querySelector("h2")?.textContent).toBe(title);
-  });
+  await vi.waitFor(
+    () => {
+      const presenter = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]');
+      expect(presenter?.shadowRoot?.querySelector("h2")?.textContent).toBe(title);
+    },
+    { timeout: 3_000 },
+  );
 }
 
 function clickTourNext(): void {
