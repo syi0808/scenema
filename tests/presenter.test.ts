@@ -169,6 +169,8 @@ describe("createTourPresenter overlay", () => {
     Object.defineProperties(stage, {
       clientWidth: { configurable: true, value: 640 },
       clientHeight: { configurable: true, value: 420 },
+      clientLeft: { configurable: true, value: 1 },
+      clientTop: { configurable: true, value: 1 },
     });
     stage.getBoundingClientRect = () => DOMRect.fromRect({ x: 20, y: 40, width: 640, height: 420 });
     document.querySelector("#target")!.getBoundingClientRect = () =>
@@ -195,8 +197,8 @@ describe("createTourPresenter overlay", () => {
 
     const host = stage.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
     expect(host.style.position).toBe("absolute");
-    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("x")).toBe("70");
-    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("y")).toBe("70");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("x")).toBe("69");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("y")).toBe("69");
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
     expect(document.querySelector("#outside")!.hasAttribute("inert")).toBe(false);
   });

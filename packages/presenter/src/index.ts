@@ -297,8 +297,8 @@ function targetOverlayRect(
 ): OverlayRect {
   const rect = target.getBoundingClientRect();
   const origin = container?.getBoundingClientRect();
-  const left = rect.left - (origin?.left ?? 0);
-  const top = rect.top - (origin?.top ?? 0);
+  const left = rect.left - (origin?.left ?? 0) - (container?.clientLeft ?? 0);
+  const top = rect.top - (origin?.top ?? 0) - (container?.clientTop ?? 0);
   const x = clamp(left - options.padding, 0, viewport.width);
   const y = clamp(top - options.padding, 0, viewport.height);
   const right = clamp(left + rect.width + options.padding, x, viewport.width);
@@ -317,8 +317,8 @@ function elementRect(target: Element, container?: HTMLElement): OverlayRect {
   const rect = target.getBoundingClientRect();
   const origin = container?.getBoundingClientRect();
   return {
-    x: rect.left - (origin?.left ?? 0),
-    y: rect.top - (origin?.top ?? 0),
+    x: rect.left - (origin?.left ?? 0) - (container?.clientLeft ?? 0),
+    y: rect.top - (origin?.top ?? 0) - (container?.clientTop ?? 0),
     width: rect.width,
     height: rect.height,
     radius: 0,
