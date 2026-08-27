@@ -15,10 +15,10 @@
       <span>Scenema</span>
     </a>
     <nav class="site-nav" aria-label="Primary navigation">
-      <a href="#live-demo">Live demo</a>
-      <a href="#scenario-code">Scenario code</a>
+      <a href="#examples">Examples</a>
+      <a href="#scenario-code">Code</a>
       <a href="https://github.com/syi0808/scenema" rel="noreferrer">GitHub</a>
     </nav>
-    <Button label="Try the demo" href="#live-demo" size="small" onclick={onStart} />
+    <Button label="Show demo" href="#examples" size="small" onclick={onStart} />
   </div>
 </header>

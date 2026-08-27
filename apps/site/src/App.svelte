@@ -1,20 +1,72 @@
 <script lang="ts">
+  import { onMount, tick } from "svelte";
+
   import Button from "./lib/Button.svelte";
-  import DemoStage from "./lib/DemoStage.svelte";
+  import CodeShowcase from "./lib/CodeShowcase.svelte";
+  import Examples from "./lib/Examples.svelte";
   import Header from "./lib/Header.svelte";
+  import Hero from "./lib/Hero.svelte";
+  import LandingDemo from "./lib/LandingDemo.svelte";
+  import { exampleById, exampleFromPath, isExamplePath, type ExampleId } from "./lib/examples";
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
-  let demoStage: DemoStage | undefined = undefined;
+  let landingDemo: LandingDemo | undefined = undefined;
+  let selected = $state<ExampleId>(exampleFromPath(routePath()));
+  let clickCount = $state(0);
+  let typeValue = $state("");
+  let starting = $state(false);
+  let completed = $state(false);
+
+  onMount(() => {
+    if (!isExamplePath(routePath())) history.replaceState(null, "", sitePath("/"));
+    const handlePopState = () => {
+      selected = exampleFromPath(routePath());
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  });
 
   function startDemo(event?: MouseEvent): void {
     event?.preventDefault();
-    document.querySelector("#live-demo")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    void demoStage?.start();
+    void landingDemo?.start();
+  }
+
+  function selectExample(next: ExampleId): void {
+    selected = next;
+    history.pushState(null, "", sitePath(exampleById(next).path));
+  }
+
+  function selectExampleForDemo(next: ExampleId): void {
+    selected = next;
+  }
+
+  function navigateExample(): void {
+    selected = "navigation";
+    history.pushState(null, "", sitePath("/examples/navigation"));
+  }
+
+  async function prepareDemo(): Promise<void> {
+    selected = "highlight";
+    clickCount = 0;
+    typeValue = "";
+    completed = false;
+    history.replaceState(null, "", sitePath("/"));
+    await tick();
+  }
+
+  function updateRunning(_running: boolean, nextStarting: boolean): void {
+    starting = nextStarting;
   }
 
   function sitePath(path: string): string {
     if (!basePrefix) return path;
     return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
+  }
+
+  function routePath(path = location.pathname): string {
+    if (!basePrefix) return path;
+    if (path === basePrefix || path === `${basePrefix}/`) return "/";
+    return path.startsWith(`${basePrefix}/`) ? path.slice(basePrefix.length) : path;
   }
 </script>
 
@@ -27,63 +79,42 @@
 <Header onStart={startDemo} assetPath={sitePath("/assets/scenema-symbol.png")} homePath={sitePath("/")} />
 
 <main id="main">
-  <section class="hero container" aria-labelledby="hero-title">
-    <div class="hero__copy">
-      <h1 id="hero-title">Guide people through your real product.</h1>
-      <p>Scenema performs real clicks, typing, and navigation—one user-paced step at a time.</p>
-      <div class="hero__actions">
-        <Button label="Start the 30-second demo" href="#live-demo" onclick={startDemo} />
-        <a class="text-link" href="#scenario-code">See the scenario code <span aria-hidden="true">↓</span></a>
-      </div>
-    </div>
-  </section>
+  <Hero onStart={startDemo} {starting} {completed} />
+  <LandingDemo
+    bind:this={landingDemo}
+    onPrepare={prepareDemo}
+    onSelectExample={selectExampleForDemo}
+    onRunningChange={updateRunning}
+    onCompleted={() => (completed = true)}
+  />
 
-  <DemoStage bind:this={demoStage} />
+  <div class="feature-strip" role="group" aria-label="Scenema capabilities">
+    <div class="container">
+      <span>Real clicks</span><span>Real typing</span><span>Route-aware</span><span>User-paced</span>
+    </div>
+  </div>
 
-  <section class="evidence-section container" aria-labelledby="evidence-title">
-    <div class="section-heading">
-      <h2 id="evidence-title">A guide that acts on the product, not around it.</h2>
-    </div>
-    <div class="evidence-list">
-      <article><h3>You chose when to continue.</h3><p>Every step waited for your intent.</p></article>
-      <article><h3>Scenema clicked and typed.</h3><p>The actions ran against real DOM targets.</p></article>
-      <article><h3>The same scenario survived navigation.</h3><p>The pathname changed while progress continued.</p></article>
-    </div>
-  </section>
+  <Examples
+    {selected}
+    {clickCount}
+    {typeValue}
+    onSelect={selectExample}
+    onClick={() => (clickCount += 1)}
+    onType={(value) => (typeValue = value)}
+    onNavigate={navigateExample}
+  />
 
-  <section class="code-section" id="scenario-code" aria-labelledby="code-title">
-    <div class="container code-section__grid">
-      <div class="section-heading">
-        <h2 id="code-title">Interface states become a sequence.</h2>
-        <p>Match each route, point to a stable target, and define the action. The runtime checkpoints progress before navigation begins.</p>
-        <a class="text-link" href="https://github.com/syi0808/scenema#readme">Read the documentation <span aria-hidden="true">→</span></a>
-      </div>
-      <div class="code-panel" role="region" aria-label="Scenario TypeScript example">
-        <div class="code-panel__bar">create-project.ts</div>
-        <pre><code><span class="code-muted">// The scene matches the real interface.</span>
-<span class="code-key">defineScenario</span>(&#123;
-  id: <span class="code-string">"create-project"</span>,
-  scenes: [&#123;
-    id: <span class="code-string">"projects"</span>,
-    match: &#123;
-      pathname: <span class="code-string">"/try/projects"</span>,
-      visible: <span class="code-string">"#project-list"</span>
-    &#125;,
-    steps: [&#123;
-      target: <span class="code-string">"#create-project"</span>,
-      transition: &#123;
-        trigger: &#123; click: <span class="code-key">true</span> &#125;,
-        to: <span class="code-string">"project-create"</span>
-      &#125;
-    &#125;]
-  &#125;]
-&#125;)</code></pre>
-      </div>
-    </div>
-  </section>
+  <CodeShowcase {selected} onSelect={selectExample} />
 
   <section class="final-callout container" aria-labelledby="final-title">
-    <h2 id="final-title">Add your first scenario.</h2>
-    <div class="install-block"><code>pnpm add scenema</code><Button label="View on GitHub" href="https://github.com/syi0808/scenema" variant="secondary" /></div>
+    <div>
+      <p class="eyebrow">Start with one sequence</p>
+      <h2 id="final-title">Guide the next action in your product.</h2>
+    </div>
+    <div class="install-block">
+      <code>pnpm add scenema</code>
+      <Button label="Get started" href="https://github.com/syi0808/scenema#readme" />
+      <Button label="View on GitHub" href="https://github.com/syi0808/scenema" variant="secondary" />
+    </div>
   </section>
 </main>

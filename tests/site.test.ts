@@ -34,47 +34,95 @@ beforeAll(async () => {
 });
 
 function currentActorbleTarget(): Element | null {
-  if (location.pathname === "/try/projects") return document.querySelector("#create-project");
-  const name = document.querySelector<HTMLInputElement>("#project-name");
-  return name?.value === "Launch workspace" ? document.querySelector("#submit-project") : name;
+  return (
+    document.querySelector("#click-example-action") ??
+    document.querySelector("#type-example-input") ??
+    document.querySelector("#navigation-example-action") ??
+    document.querySelector("#scenario-code-panel") ??
+    document.querySelector("#hero-demo")
+  );
 }
 
-describe("landing demo", () => {
-  it("runs the complete guided project scenario", async () => {
-    await vi.waitFor(() => expect(document.querySelector("#start-tour")).not.toBeNull());
-    (document.querySelector("#start-tour") as HTMLButtonElement).click();
-    await expectTourTitle("Create a project");
-
-    clickTourNext();
-    await vi.waitFor(() => expect(location.pathname).toBe("/try/projects/new"));
-    await expectTourTitle("Name the project");
-
-    clickTourNext();
-    await expectTourTitle("Create the project");
-    expect((document.querySelector("#project-name") as HTMLInputElement).value).toBe(
-      "Launch workspace",
+describe("landing examples", () => {
+  it("runs examples directly and keeps the selected route in sync", async () => {
+    await vi.waitFor(() => expect(document.querySelector("#example-tab-click")).not.toBeNull());
+    click("#example-tab-click");
+    expect(location.pathname).toBe("/examples/click");
+    await vi.waitFor(() => expect(document.querySelector("#click-example-action")).not.toBeNull());
+    click("#click-example-action");
+    await vi.waitFor(() =>
+      expect(document.querySelector("#click-example-count")?.textContent).toContain("1"),
     );
+
+    click("#example-tab-type");
+    expect(location.pathname).toBe("/examples/type");
+    await vi.waitFor(() => expect(document.querySelector("#type-example-input")).not.toBeNull());
+    const input = document.querySelector<HTMLInputElement>("#type-example-input")!;
+    input.value = "Direct example";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(input.value).toBe("Direct example");
+
+    click("#example-tab-navigation");
+    await vi.waitFor(() =>
+      expect(document.querySelector("#navigation-example-action")).not.toBeNull(),
+    );
+    click("#navigation-example-action");
+    expect(location.pathname).toBe("/examples/navigation");
+    expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
+      "Navigate",
+    );
+  });
+});
+
+describe("integrated landing demo", () => {
+  it("clicks, types, changes route, and connects the result to code", async () => {
+    click("#start-tour");
+    await expectTourTitle("This page is the demo");
+
+    clickTourNext();
+    await expectTourTitle("Perform a real click");
+
+    clickTourNext();
+    await expectTourTitle("Type into the real field");
 
     clickTourBack();
-    await expectTourTitle("Name the project");
+    await expectTourTitle("Perform a real click");
+    expect(document.querySelector("#click-example-count")?.textContent).toContain("1");
 
     clickTourNext();
-    await expectTourTitle("Create the project");
-    expect((document.querySelector("#project-name") as HTMLInputElement).value).toBe(
+    await expectTourTitle("Type into the real field");
+    clickTourNext();
+    await expectTourTitle("Continue on a new route");
+
+    clickTourBack();
+    await expectTourTitle("Type into the real field");
+    expect((document.querySelector("#type-example-input") as HTMLInputElement).value).toBe(
       "Launch workspace",
     );
 
     clickTourNext();
-    await vi.waitFor(() => expect(location.pathname).toBe("/try/projects/launch-workspace"));
-    await expectTourTitle("The scenario stayed with you");
-    expect(document.querySelector("#project-ready")).not.toBeNull();
+    await expectTourTitle("Continue on a new route");
+    clickTourNext();
+    await vi.waitFor(() => expect(location.pathname).toBe("/examples/navigation"));
+    await expectTourTitle("The scenario stayed with the page");
+    expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
+      "#navigation-example-action",
+    );
 
     clickTourNext();
     await vi.waitFor(() =>
       expect(document.querySelector('[data-scenema-presenter="tour"]')).toBeNull(),
     );
+    await vi.waitFor(() =>
+      expect(document.querySelector(".demo-status")?.textContent).toContain("Demo complete"),
+    );
+    expect(document.querySelector("#start-tour")?.textContent).toBe("Run the demo again");
   });
 });
+
+function click(selector: string): void {
+  (document.querySelector(selector) as HTMLElement).click();
+}
 
 async function expectTourTitle(title: string): Promise<void> {
   await vi.waitFor(() => {

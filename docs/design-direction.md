@@ -41,18 +41,18 @@ Do not switch typefaces, styles, or colors for a single word inside a heading.
 ## Components
 
 - `Button`: primary, secondary, and quiet variants share height, radius, type, and focus treatment.
-- `Header`: contains only product identity, two in-page landmarks, source link, and demo action.
-- `DemoStage`: combines route evidence, the working product surface, progress rail, and live status.
-- `TourCard`: uses the same palette, type, radii, and button hierarchy as the site and may be scoped to a container.
-- `EvidenceList`: replaces abstract framework language with three observable outcomes from the demo.
-- `CodePanel`: connects the visible route and target to the scenario definition.
+- `Header`: contains product identity, Examples and Code landmarks, the source link, and the global demo action.
+- `Hero`: states the product benefit and starts a tour that acts on the landing page itself.
+- `Examples`: exposes highlight, click, type, and navigation actions as independent controls and guided-tour targets.
+- `LandingDemo`: coordinates the five-step sequence without rendering a separate simulated product.
+- `CodeShowcase`: keeps the selected example, pathname, and scenario definition aligned.
+- `TourCard`: uses the same palette, type, radii, and button hierarchy as the site.
 
 ## Page Sequence
 
-1. State the benefit in plain language.
-2. Run the 30-second scenario inside the landing page.
-3. Explain what the visitor just observed.
-4. Show the scenario definition behind that interaction.
-5. Offer installation and source documentation.
+1. State the benefit and start the landing-page demo.
+2. Let visitors run the same examples independently.
+3. Connect each visible action to its scenario definition.
+4. Offer installation and source documentation.
 
 Do not add a protocol diagram, giant final banner, decorative browser chrome, theme toggle, card grid, or repeated CTA without a new decision to support.
