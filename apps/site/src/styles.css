@@ -72,6 +72,14 @@ body.hero-preview::-webkit-scrollbar {
   display: none;
 }
 
+body.hero-preview [data-scenema-presenter] {
+  z-index: 2147483000 !important;
+}
+
+body.hero-preview [data-actorble-overlay-root] {
+  z-index: 2147483647 !important;
+}
+
 button,
 input {
   font: inherit;
@@ -244,10 +252,21 @@ a {
 }
 
 .hero__grid {
+  width: min(1240px, calc(100% - 64px));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(500px, 560px);
   gap: var(--space-16);
   align-items: center;
+}
+
+@media (max-width: 1100px) {
+  .hero__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: auto;
+  }
 }
 
 .hero h1 {

@@ -6,34 +6,45 @@
   const previewWidth = 1120;
 
   let frame = $state<HTMLElement>();
-  let scale = $state(430 / previewWidth);
+  let scale = $state(560 / previewWidth);
+  let active = $state(true);
 
   onMount(() => {
-    if (!frame || !window.ResizeObserver) return;
-    const observer = new ResizeObserver(([entry]) => {
+    if (!frame || !window.ResizeObserver || !window.IntersectionObserver) return;
+    const resizeObserver = new ResizeObserver(([entry]) => {
       const width = entry?.contentRect.width;
       if (width) scale = width / previewWidth;
     });
-    observer.observe(frame);
-    return () => observer.disconnect();
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => (active = Boolean(entry?.isIntersecting)),
+      { threshold: 0.05 },
+    );
+    resizeObserver.observe(frame);
+    visibilityObserver.observe(frame);
+    return () => {
+      resizeObserver.disconnect();
+      visibilityObserver.disconnect();
+    };
   });
 </script>
 
 <div class="hero-product-demo" bind:this={frame}>
-  <iframe
-    title="Scenema autonomous product demo"
-    src={previewPath}
-    tabindex="-1"
-    aria-hidden="true"
-    scrolling="no"
-    style:transform={`scale(${scale})`}
-  ></iframe>
+  {#if active}
+    <iframe
+      title="Scenema autonomous product demo"
+      src={previewPath}
+      tabindex="-1"
+      aria-hidden="true"
+      scrolling="no"
+      style:transform={`scale(${scale})`}
+    ></iframe>
+  {/if}
 </div>
 
 <style>
   .hero-product-demo {
-    width: min(100%, 430px);
-    height: 470px;
+    width: min(100%, 560px);
+    height: 570px;
     position: relative;
     justify-self: end;
     overflow: hidden;
@@ -61,7 +72,7 @@
 
   @media (max-width: 560px) {
     .hero-product-demo {
-      height: 430px;
+      height: 460px;
     }
   }
 </style>

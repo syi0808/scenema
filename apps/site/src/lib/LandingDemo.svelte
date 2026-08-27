@@ -153,7 +153,12 @@
         const target = document.querySelector(context.target ?? "#hero-copy");
         if (target) await scrollTargetIntoView(target, reduceMotion);
         await tick();
-        return tourPresenter.present(presentation, context);
+        await tourPresenter.present(presentation, context);
+        if (isolated) {
+          document
+            .querySelector<HTMLElement>('[data-scenema-presenter="tour"]')
+            ?.style.setProperty("z-index", "2147483000", "important");
+        }
       },
       dismiss: tourPresenter.dismiss,
     };
@@ -349,7 +354,8 @@
 
   async function scrollTargetIntoView(target: Element, reduceMotion: boolean): Promise<void> {
     if (reduceMotion) {
-      target.scrollIntoView({ behavior: "auto", block: "center" });
+      if (isolated) scrollIsolatedTarget(target, "auto");
+      else target.scrollIntoView({ behavior: "auto", block: "center" });
       return;
     }
     const view = document.defaultView;
@@ -374,13 +380,20 @@
       };
       document.addEventListener("scroll", handleScroll, { capture: true, passive: true });
       maximumTimer = view.setTimeout(finish, 1_000);
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (isolated) scrollIsolatedTarget(target, "smooth");
+      else target.scrollIntoView({ behavior: "smooth", block: "center" });
       view.requestAnimationFrame(() =>
         view.requestAnimationFrame(() => {
           if (!scrolling) finish();
         }),
       );
     });
+  }
+
+  function scrollIsolatedTarget(target: Element, behavior: ScrollBehavior): void {
+    const bounds = target.getBoundingClientRect();
+    const top = Math.max(0, window.scrollY + bounds.top - (window.innerHeight - bounds.height) / 2);
+    window.scrollTo({ top, behavior });
   }
 </script>
 
