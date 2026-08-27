@@ -309,7 +309,7 @@ function targetOverlayRect(
     y,
     width: right - x,
     height: bottom - y,
-    radius: Math.max(options.borderRadius, targetRadius + options.padding),
+    radius: targetRadius === 0 ? 0 : Math.max(options.borderRadius, targetRadius + options.padding),
   };
 }
 

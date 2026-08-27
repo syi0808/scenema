@@ -60,14 +60,14 @@ describe("createTourPresenter overlay", () => {
     expect(hole.getAttribute("y")).toBe("110");
     expect(hole.getAttribute("width")).toBe("220");
     expect(hole.getAttribute("height")).toBe("60");
-    expect(hole.getAttribute("rx")).toBe("14");
+    expect(hole.getAttribute("rx")).toBe("0");
     expect(ring.style.cssText).toContain("left: 90px");
     expect(ring.style.cssText).toContain("top: 110px");
     expect(ring.style.cssText).toContain("width: 220px");
     const card = host.shadowRoot!.querySelector<HTMLElement>(".card")!;
     expect(card.style.left).toBe("90px");
     expect(card.style.top).toBe("182px");
-    expect(scene.style.getPropertyValue("--highlight-radius")).toBe("14px");
+    expect(scene.style.getPropertyValue("--highlight-radius")).toBe("0px");
     expect(scene.style.getPropertyValue("--overlay-delay")).toBe("240ms");
     expect(scene.style.getPropertyValue("--popup-delay")).toBe("480ms");
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
@@ -106,16 +106,17 @@ describe("createTourPresenter overlay", () => {
   });
 
   it.each([
+    { borderRadius: "0px", width: 100, height: 40, expected: "0" },
     { borderRadius: "12px", width: 100, height: 40, expected: "16" },
     { borderRadius: "50%", width: 40, height: 40, expected: "24" },
-  ])("expands a target border radius with the highlight padding", (sample) => {
+  ])("derives the highlight radius from the target and padding", (sample) => {
     const target = document.querySelector<HTMLElement>("#target")!;
     target.style.borderRadius = sample.borderRadius;
     target.getBoundingClientRect = () =>
       DOMRect.fromRect({ x: 100, y: 120, width: sample.width, height: sample.height });
     const presenter = createTourPresenter({
       document,
-      overlay: { padding: 4, borderRadius: 0 },
+      overlay: { padding: 4, borderRadius: 10 },
     });
 
     presenter.present(
