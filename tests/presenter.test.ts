@@ -59,21 +59,17 @@ describe("createTourPresenter overlay", () => {
 
     const host = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
     const scene = host.shadowRoot!.querySelector<HTMLElement>(".scene")!;
-    const ring = host.shadowRoot!.querySelector<HTMLElement>(".focus-ring")!;
     const hole = host.shadowRoot!.querySelector<SVGPathElement>(".mask-hole")!;
     expect(scene.dataset.phase).toBe("active");
     expect(host.shadowRoot!.querySelectorAll(".overlay-surface")).toHaveLength(1);
+    expect(host.shadowRoot!.querySelector(".focus-ring")).toBeNull();
     expect(host.shadowRoot!.querySelectorAll('[class^="shade"]')).toHaveLength(0);
     expect(hole.getAttribute("d")).toBe(
       "M 90 110 H 310 L 310 110 V 170 L 310 170 H 90 L 90 170 V 110 L 90 110 Z",
     );
-    expect(ring.style.cssText).toContain("left: 90px");
-    expect(ring.style.cssText).toContain("top: 110px");
-    expect(ring.style.cssText).toContain("width: 220px");
     const card = host.shadowRoot!.querySelector<HTMLElement>(".card")!;
     expect(card.style.left).toBe("90px");
     expect(card.style.top).toBe("182px");
-    expect(ring.style.borderTopLeftRadius).toBe("0px");
     expect(scene.style.getPropertyValue("--overlay-delay")).toBe("240ms");
     expect(scene.style.getPropertyValue("--popup-delay")).toBe("480ms");
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
@@ -107,7 +103,7 @@ describe("createTourPresenter overlay", () => {
       '[data-scenema-presenter="tour"]',
     )!.shadowRoot!;
     expect(root.querySelector(".overlay-surface")).not.toBeNull();
-    expect(root.querySelector<HTMLElement>(".focus-ring")!.hidden).toBe(true);
+    expect(root.querySelector(".focus-ring")).toBeNull();
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(false);
   });
 
@@ -140,20 +136,21 @@ describe("createTourPresenter overlay", () => {
     );
 
     const host = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
-    const ring = host.shadowRoot!.querySelector<HTMLElement>(".focus-ring")!;
+    const hole = host.shadowRoot!.querySelector<SVGPathElement>(".mask-hole")!;
     const initialCalls = targetRect.mock.calls.length;
+    const initialPath = hole.getAttribute("d");
     expect(host.style.position).toBe("absolute");
-    expect(ring.style.top).toBe("410px");
+    expect(initialPath).toContain("M 90 410");
 
     scrollY = 500;
     viewportTop = -80;
     document.dispatchEvent(new Event("scroll", { bubbles: true }));
     expect(targetRect).toHaveBeenCalledTimes(initialCalls);
-    expect(ring.style.top).toBe("410px");
+    expect(hole.getAttribute("d")).toBe(initialPath);
 
     window.dispatchEvent(new Event("resize"));
     expect(targetRect.mock.calls.length).toBeGreaterThan(initialCalls);
-    expect(ring.style.top).toBe("410px");
+    expect(hole.getAttribute("d")).toBe(initialPath);
   });
 
   it("anchors the card to an offscreen target before the document scrolls", () => {
@@ -218,11 +215,6 @@ describe("createTourPresenter overlay", () => {
     const root = document.querySelector<HTMLElement>(
       '[data-scenema-presenter="tour"]',
     )!.shadowRoot!;
-    const ring = root.querySelector<HTMLElement>(".focus-ring")!;
-    expect(ring.style.borderTopLeftRadius).toBe(`${sample.expected}px`);
-    expect(ring.style.borderTopRightRadius).toBe(`${sample.expected}px`);
-    expect(ring.style.borderBottomRightRadius).toBe(`${sample.expected}px`);
-    expect(ring.style.borderBottomLeftRadius).toBe(`${sample.expected}px`);
     if (sample.expected === "0") {
       expect(root.querySelector(".mask-hole")!.getAttribute("d")).not.toContain(" A ");
     } else {
@@ -259,11 +251,6 @@ describe("createTourPresenter overlay", () => {
     const root = document.querySelector<HTMLElement>(
       '[data-scenema-presenter="tour"]',
     )!.shadowRoot!;
-    const ring = root.querySelector<HTMLElement>(".focus-ring")!;
-    expect(ring.style.borderTopLeftRadius).toBe("8px 10px");
-    expect(ring.style.borderTopRightRadius).toBe("16px 18px");
-    expect(ring.style.borderBottomRightRadius).toBe("24px 26px");
-    expect(ring.style.borderBottomLeftRadius).toBe("32px 34px");
     const path = root.querySelector(".mask-hole")!.getAttribute("d")!;
     expect(path).toContain("A 8 10");
     expect(path).toContain("A 16 18");

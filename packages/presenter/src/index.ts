@@ -103,14 +103,8 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
             transition: opacity var(--overlay-duration) ease; }
           .scene[data-phase="active"] .overlay-surface { opacity: var(--overlay-opacity);
             transition-delay: var(--overlay-delay); }
-          .focus-ring { position: absolute; z-index: 1; box-sizing: border-box; border: 2px solid #fff;
-            border-radius: 0; box-shadow: 0 0 0 1px #0f172a66, 0 0 20px #fff4;
-            opacity: 0; transform: scale(.96); transition: opacity var(--overlay-duration) ease,
-            transform var(--overlay-duration) cubic-bezier(.22, 1, .36, 1); }
-          .scene[data-phase="active"] .focus-ring { opacity: 1; transform: scale(1);
-            transition-delay: var(--overlay-delay); }
           .scene[data-phase="exit"] .overlay-surface,
-          .scene[data-phase="exit"] .focus-ring, .scene[data-phase="exit"] .card { opacity: 0;
+          .scene[data-phase="exit"] .card { opacity: 0;
             transition-delay: 0ms; }
           .card { position: absolute; z-index: 2; width: min(320px, calc(100% - 32px)); padding: 18px;
             box-sizing: border-box; color: #0f172a; background: #fff; border: 1px solid #94a3b8;
@@ -121,7 +115,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
           footer { display: flex; align-items: center; gap: 8px; } .progress { margin-right: auto; color: #475569; font: 12px/1.4 "SFMono-Regular", Consolas, monospace; }
           button { min-height: 36px; border: 1px solid transparent; border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; }
           .back { color: #0f172a; border-color: #e2e8f0; background: transparent; } .next { color: #fff; background: #2450e6; font-weight: 650; }
-          @media (prefers-reduced-motion: reduce) { .overlay-surface, .focus-ring, .card {
+          @media (prefers-reduced-motion: reduce) { .overlay-surface, .card {
             transition-duration: 1ms !important; transition-delay: 0ms !important; } }
         </style>
         <div class="scene" data-phase="enter">
@@ -276,14 +270,12 @@ function createOverlayController(
         </mask>
       </defs>
       <rect class="overlay-surface" mask="url(#scenema-overlay-mask)"></rect>
-    </svg>
-    <div class="focus-ring"></div>`;
+    </svg>`;
 
   const svg = root.querySelector<SVGSVGElement>(".overlay-svg")!;
   const field = root.querySelector<SVGRectElement>(".mask-field")!;
   const hole = root.querySelector<SVGPathElement>(".mask-hole")!;
   const overlaySurface = root.querySelector<SVGRectElement>(".overlay-surface")!;
-  const ring = root.querySelector<HTMLElement>(".focus-ring")!;
   let bounds = surfaceSize(document, container);
 
   const setSurface = () => {
@@ -304,13 +296,10 @@ function createOverlayController(
         ? targetOverlayRect(target, bounds, options, document, container)
         : null;
       scene.dataset.hasTarget = String(Boolean(highlight));
-      ring.hidden = !highlight;
       if (!highlight) {
         setSvgPath(hole, collapsedRect(bounds));
         return null;
       }
-      setElementRect(ring, highlight.x, highlight.y, highlight.width, highlight.height);
-      setElementRadii(ring, highlight.radii);
       setSvgPath(hole, highlight);
       return highlight;
     },
@@ -495,31 +484,6 @@ function collapsedRect(viewport: { width: number; height: number }): OverlayRect
     height: 0,
     radii: zeroCornerRadii(),
   };
-}
-
-function setElementRect(
-  element: HTMLElement,
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-): void {
-  element.style.left = `${left}px`;
-  element.style.top = `${top}px`;
-  element.style.width = `${width}px`;
-  element.style.height = `${height}px`;
-}
-
-function setElementRadii(element: HTMLElement, radii: CornerRadii): void {
-  element.style.borderTopLeftRadius = cssRadius(radii.topLeft);
-  element.style.borderTopRightRadius = cssRadius(radii.topRight);
-  element.style.borderBottomRightRadius = cssRadius(radii.bottomRight);
-  element.style.borderBottomLeftRadius = cssRadius(radii.bottomLeft);
-}
-
-function cssRadius(radius: CornerRadius): string {
-  const horizontal = `${formatNumber(radius.x)}px`;
-  return radius.x === radius.y ? horizontal : `${horizontal} ${formatNumber(radius.y)}px`;
 }
 
 function setSvgPath(element: SVGPathElement, rect: OverlayRect): void {
