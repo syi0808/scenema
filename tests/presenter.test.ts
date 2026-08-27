@@ -12,6 +12,14 @@ const controls = {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  Object.defineProperties(window, {
+    scrollX: { configurable: true, value: 0 },
+    scrollY: { configurable: true, value: 0 },
+  });
+  Object.defineProperty(document.documentElement, "scrollHeight", {
+    configurable: true,
+    value: 0,
+  });
   document.body.innerHTML = '<button id="target">Target</button>';
   let elapsed = 0;
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
@@ -105,6 +113,82 @@ describe("createTourPresenter overlay", () => {
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(false);
   });
 
+  it("keeps document-space highlights stable without scroll-driven repositioning", () => {
+    let scrollY = 300;
+    let viewportTop = 120;
+    Object.defineProperty(window, "scrollY", { configurable: true, get: () => scrollY });
+    const target = document.querySelector<HTMLElement>("#target")!;
+    const targetRect = vi.fn(() =>
+      DOMRect.fromRect({ x: 100, y: viewportTop, width: 200, height: 40 }),
+    );
+    target.getBoundingClientRect = targetRect;
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Document anchored" },
+      {
+        sceneId: "landing",
+        stepId: "anchor",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const host = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
+    const ring = host.shadowRoot!.querySelector<HTMLElement>(".focus-ring")!;
+    const initialCalls = targetRect.mock.calls.length;
+    expect(host.style.position).toBe("absolute");
+    expect(ring.style.top).toBe("410px");
+
+    scrollY = 500;
+    viewportTop = -80;
+    document.dispatchEvent(new Event("scroll", { bubbles: true }));
+    expect(targetRect).toHaveBeenCalledTimes(initialCalls);
+    expect(ring.style.top).toBe("410px");
+
+    window.dispatchEvent(new Event("resize"));
+    expect(targetRect.mock.calls.length).toBeGreaterThan(initialCalls);
+    expect(ring.style.top).toBe("410px");
+  });
+
+  it("anchors the card to an offscreen target before the document scrolls", () => {
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      value: 2000,
+    });
+    document.querySelector("#target")!.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 100, y: 1200, width: 200, height: 40 });
+    const presenter = createTourPresenter({
+      document,
+      overlay: { padding: 10 },
+    });
+
+    presenter.present(
+      { title: "Offscreen target" },
+      {
+        sceneId: "landing",
+        stepId: "offscreen",
+        stepNumber: 1,
+        totalSteps: 1,
+        canPrevious: false,
+        interaction: "passthrough",
+        target: "#target",
+        controls,
+      },
+    );
+
+    const host = document.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
+    const card = host.shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(card.style.top).toBe("1262px");
+  });
+
   it.each([
     { borderRadius: "0px", width: 100, height: 40, expected: "0" },
     { borderRadius: "12px", width: 100, height: 40, expected: "16" },
@@ -172,6 +256,10 @@ describe("createTourPresenter overlay", () => {
       clientHeight: { configurable: true, value: 420 },
       clientLeft: { configurable: true, value: 1 },
       clientTop: { configurable: true, value: 1 },
+      scrollWidth: { configurable: true, value: 800 },
+      scrollHeight: { configurable: true, value: 600 },
+      scrollLeft: { configurable: true, value: 30 },
+      scrollTop: { configurable: true, value: 50 },
     });
     stage.getBoundingClientRect = () => DOMRect.fromRect({ x: 20, y: 40, width: 640, height: 420 });
     document.querySelector("#target")!.getBoundingClientRect = () =>
@@ -198,8 +286,10 @@ describe("createTourPresenter overlay", () => {
 
     const host = stage.querySelector<HTMLElement>('[data-scenema-presenter="tour"]')!;
     expect(host.style.position).toBe("absolute");
-    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("x")).toBe("69");
-    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("y")).toBe("69");
+    expect(host.style.width).toBe("800px");
+    expect(host.style.height).toBe("600px");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("x")).toBe("99");
+    expect(host.shadowRoot!.querySelector(".mask-hole")!.getAttribute("y")).toBe("119");
     expect(document.querySelector("#target")!.hasAttribute("inert")).toBe(true);
     expect(document.querySelector("#outside")!.hasAttribute("inert")).toBe(false);
   });

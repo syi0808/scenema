@@ -83,7 +83,8 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const root = host.attachShadow({ mode: "open" });
       root.innerHTML = `
         <style>
-          :host { all: initial; position: fixed; z-index: 2147483647; inset: 0; pointer-events: none; }
+          :host { all: initial; position: absolute; z-index: 2147483647; top: 0; left: 0;
+            pointer-events: none; }
           .scene { position: absolute; inset: 0; font: 14px/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; }
           .overlay-svg { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; }
           .overlay-surface { fill: var(--overlay-color); opacity: 0;
@@ -143,7 +144,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       next.textContent =
         options.nextLabel ?? (context.stepNumber === context.totalSteps ? "Finish" : "Next");
       next.addEventListener("click", context.controls.proceed);
-      if (container) host.style.position = "absolute";
+      host.style.position = "absolute";
       (container ?? document.body).append(host);
       if (context.interaction === "locked") {
         releaseInteractionLock = lockDocumentInteraction(document, host, container);
@@ -155,21 +156,23 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
         ? createOverlayController(overlayRoot, scene, document, overlay, container)
         : null;
       const updatePosition = () => {
+        const surface = surfaceSize(document, container);
+        host!.style.width = `${surface.width}px`;
+        host!.style.height = `${surface.height}px`;
         const target = context.target ? document.querySelector(context.target) : null;
         const highlight = overlayController?.update(target);
         positionCard(
           card,
-          highlight ?? (!overlayController && target ? elementRect(target, container) : null),
+          highlight ??
+            (!overlayController && target ? elementRect(target, document, container) : null),
           document,
           container,
         );
       };
       updatePosition();
       document.defaultView?.addEventListener("resize", updatePosition);
-      document.addEventListener("scroll", updatePosition, true);
       removePositionListeners = () => {
         document.defaultView?.removeEventListener("resize", updatePosition);
-        document.removeEventListener("scroll", updatePosition, true);
       };
       scheduleFrame(document, () => {
         if (scene.dataset.phase !== "enter") return;
@@ -220,18 +223,30 @@ function positionCard(
   document: Document,
   container?: HTMLElement,
 ): void {
+  const viewport = scrollport(document, container);
   if (!anchor) {
-    card.style.left = "50%";
-    card.style.top = "50%";
+    card.style.left = `${viewport.left + viewport.width / 2}px`;
+    card.style.top = `${viewport.top + viewport.height / 2}px`;
     card.style.transform = "translate(-50%, -50%)";
     return;
   }
   card.style.transform = "";
-  const { width, height } = viewportSize(document, container);
-  const left = Math.min(Math.max(16, anchor.x), Math.max(16, width - 336));
+  const horizontallyVisible =
+    anchor.x + anchor.width >= viewport.left && anchor.x <= viewport.left + viewport.width;
+  const verticallyVisible =
+    anchor.y + anchor.height >= viewport.top && anchor.y <= viewport.top + viewport.height;
+  const minimumLeft = viewport.left + 16;
+  const maximumLeft = Math.max(minimumLeft, viewport.left + viewport.width - 336);
+  const left = horizontallyVisible
+    ? Math.min(Math.max(minimumLeft, anchor.x), maximumLeft)
+    : anchor.x;
   const top = anchor.y + anchor.height + 12;
   card.style.left = `${left}px`;
-  card.style.top = `${Math.max(16, Math.min(top, height - 180))}px`;
+  card.style.top = `${
+    verticallyVisible
+      ? Math.max(viewport.top + 16, Math.min(top, viewport.top + viewport.height - 180))
+      : top
+  }px`;
 }
 
 function createOverlayController(
@@ -256,29 +271,31 @@ function createOverlayController(
   const svg = root.querySelector<SVGSVGElement>(".overlay-svg")!;
   const field = root.querySelector<SVGRectElement>(".mask-field")!;
   const hole = root.querySelector<SVGRectElement>(".mask-hole")!;
-  const surface = root.querySelector<SVGRectElement>(".overlay-surface")!;
+  const overlaySurface = root.querySelector<SVGRectElement>(".overlay-surface")!;
   const ring = root.querySelector<HTMLElement>(".focus-ring")!;
-  let viewport = viewportSize(document, container);
+  let bounds = surfaceSize(document, container);
 
-  const setViewport = () => {
-    viewport = viewportSize(document, container);
-    svg.setAttribute("viewBox", `0 0 ${viewport.width} ${viewport.height}`);
-    for (const element of [field, surface]) {
+  const setSurface = () => {
+    bounds = surfaceSize(document, container);
+    svg.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
+    for (const element of [field, overlaySurface]) {
       element.setAttribute("x", "0");
       element.setAttribute("y", "0");
-      element.setAttribute("width", String(viewport.width));
-      element.setAttribute("height", String(viewport.height));
+      element.setAttribute("width", String(bounds.width));
+      element.setAttribute("height", String(bounds.height));
     }
   };
 
   return {
     update(target) {
-      setViewport();
-      const highlight = target ? targetOverlayRect(target, viewport, options, container) : null;
+      setSurface();
+      const highlight = target
+        ? targetOverlayRect(target, bounds, options, document, container)
+        : null;
       scene.dataset.hasTarget = String(Boolean(highlight));
       ring.hidden = !highlight;
       if (!highlight) {
-        setSvgRect(hole, collapsedRect(viewport));
+        setSvgRect(hole, collapsedRect(bounds));
         return null;
       }
       scene.style.setProperty("--highlight-radius", `${highlight.radius}px`);
@@ -291,18 +308,19 @@ function createOverlayController(
 
 function targetOverlayRect(
   target: Element,
-  viewport: { width: number; height: number },
+  surface: { width: number; height: number },
   options: ResolvedOverlayOptions,
+  document: Document,
   container?: HTMLElement,
 ): OverlayRect {
   const rect = target.getBoundingClientRect();
-  const origin = container?.getBoundingClientRect();
-  const left = rect.left - (origin?.left ?? 0) - (container?.clientLeft ?? 0);
-  const top = rect.top - (origin?.top ?? 0) - (container?.clientTop ?? 0);
-  const x = clamp(left - options.padding, 0, viewport.width);
-  const y = clamp(top - options.padding, 0, viewport.height);
-  const right = clamp(left + rect.width + options.padding, x, viewport.width);
-  const bottom = clamp(top + rect.height + options.padding, y, viewport.height);
+  const offset = coordinateOffset(document, container);
+  const left = rect.left + offset.left;
+  const top = rect.top + offset.top;
+  const x = clamp(left - options.padding, 0, surface.width);
+  const y = clamp(top - options.padding, 0, surface.height);
+  const right = clamp(left + rect.width + options.padding, x, surface.width);
+  const bottom = clamp(top + rect.height + options.padding, y, surface.height);
   const targetRadius = targetBorderRadius(target, rect);
   return {
     x,
@@ -313,12 +331,12 @@ function targetOverlayRect(
   };
 }
 
-function elementRect(target: Element, container?: HTMLElement): OverlayRect {
+function elementRect(target: Element, document: Document, container?: HTMLElement): OverlayRect {
   const rect = target.getBoundingClientRect();
-  const origin = container?.getBoundingClientRect();
+  const offset = coordinateOffset(document, container);
   return {
-    x: rect.left - (origin?.left ?? 0) - (container?.clientLeft ?? 0),
-    y: rect.top - (origin?.top ?? 0) - (container?.clientTop ?? 0),
+    x: rect.left + offset.left,
+    y: rect.top + offset.top,
     width: rect.width,
     height: rect.height,
     radius: 0,
@@ -378,14 +396,71 @@ function setSvgRect(element: SVGRectElement, rect: OverlayRect): void {
   element.setAttribute("rx", String(Math.min(rect.radius, rect.width / 2, rect.height / 2)));
 }
 
-function viewportSize(
+function surfaceSize(
   document: Document,
   container?: HTMLElement,
 ): { width: number; height: number } {
-  if (container) return { width: container.clientWidth, height: container.clientHeight };
+  if (container) {
+    return {
+      width: Math.max(container.clientWidth, container.scrollWidth),
+      height: Math.max(container.clientHeight, container.scrollHeight),
+    };
+  }
+  const root = document.documentElement;
+  const body = document.body;
   return {
-    width: document.defaultView?.innerWidth ?? document.documentElement.clientWidth,
-    height: document.defaultView?.innerHeight ?? document.documentElement.clientHeight,
+    width: Math.max(
+      document.defaultView?.innerWidth ?? root.clientWidth,
+      root.clientWidth,
+      root.scrollWidth,
+      body?.clientWidth ?? 0,
+      body?.scrollWidth ?? 0,
+    ),
+    height: Math.max(
+      document.defaultView?.innerHeight ?? root.clientHeight,
+      root.clientHeight,
+      root.scrollHeight,
+      body?.clientHeight ?? 0,
+      body?.scrollHeight ?? 0,
+    ),
+  };
+}
+
+function coordinateOffset(
+  document: Document,
+  container?: HTMLElement,
+): { left: number; top: number } {
+  if (container) {
+    const origin = container.getBoundingClientRect();
+    return {
+      left: container.scrollLeft - origin.left - container.clientLeft,
+      top: container.scrollTop - origin.top - container.clientTop,
+    };
+  }
+  return {
+    left: document.defaultView?.scrollX ?? 0,
+    top: document.defaultView?.scrollY ?? 0,
+  };
+}
+
+function scrollport(
+  document: Document,
+  container?: HTMLElement,
+): { left: number; top: number; width: number; height: number } {
+  if (container) {
+    return {
+      left: container.scrollLeft,
+      top: container.scrollTop,
+      width: container.clientWidth,
+      height: container.clientHeight,
+    };
+  }
+  const root = document.documentElement;
+  return {
+    left: document.defaultView?.scrollX ?? 0,
+    top: document.defaultView?.scrollY ?? 0,
+    width: document.defaultView?.innerWidth ?? root.clientWidth,
+    height: document.defaultView?.innerHeight ?? root.clientHeight,
   };
 }
 

@@ -19,6 +19,7 @@
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
   let runtime: Scenema | null = null;
+  let ready: Promise<void> = Promise.resolve();
   let status = $state("Ready. Start the demo when you choose.");
   let statusState = $state<"ready" | "error">("ready");
   let starting = false;
@@ -109,10 +110,8 @@
           onSelectExample(example);
           await tick();
         }
-        document.querySelector(context.target ?? "#hero-demo")?.scrollIntoView({
-          behavior: reduceMotion ? "auto" : "smooth",
-          block: "center",
-        });
+        const target = document.querySelector(context.target ?? "#hero-demo");
+        if (target) await scrollTargetIntoView(target, reduceMotion);
         await tick();
         return tourPresenter.present(presentation, context);
       },
@@ -142,11 +141,14 @@
       },
     });
 
-    void runtime.bootstrap().then((restored) => {
-      if (!restored) return;
-      status = "The demo continued at the current route.";
-      onRunningChange(true, false);
-    });
+    ready = runtime
+      .bootstrap()
+      .then((restored) => {
+        if (!restored) return;
+        status = "The demo continued at the current route.";
+        onRunningChange(true, false);
+      })
+      .catch(() => undefined);
 
     return () => runtime?.dispose();
   });
@@ -157,6 +159,7 @@
     statusState = "ready";
     status = "Preparing the landing page demo…";
     onRunningChange(false, true);
+    await ready;
     runtime.stop();
     await onPrepare();
     try {
@@ -175,6 +178,42 @@
   function sitePath(path: string): string {
     if (!basePrefix) return path;
     return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
+  }
+
+  async function scrollTargetIntoView(target: Element, reduceMotion: boolean): Promise<void> {
+    if (reduceMotion) {
+      target.scrollIntoView({ behavior: "auto", block: "center" });
+      return;
+    }
+    const view = document.defaultView;
+    if (!view) return;
+    await new Promise<void>((resolve) => {
+      let settledTimer: number | undefined;
+      let maximumTimer: number | undefined;
+      let finished = false;
+      let scrolling = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        document.removeEventListener("scroll", handleScroll, true);
+        if (settledTimer !== undefined) view.clearTimeout(settledTimer);
+        if (maximumTimer !== undefined) view.clearTimeout(maximumTimer);
+        resolve();
+      };
+      const handleScroll = () => {
+        scrolling = true;
+        if (settledTimer !== undefined) view.clearTimeout(settledTimer);
+        settledTimer = view.setTimeout(finish, 80);
+      };
+      document.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+      maximumTimer = view.setTimeout(finish, 1_000);
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      view.requestAnimationFrame(() =>
+        view.requestAnimationFrame(() => {
+          if (!scrolling) finish();
+        }),
+      );
+    });
   }
 </script>
 
