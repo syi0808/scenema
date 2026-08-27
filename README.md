@@ -168,7 +168,7 @@ The runtime never relies on `beforeunload` for critical persistence. SPA route c
 The Svelte app in `apps/site` combines the product story and its proof:
 
 - `/` is both the landing page and the target of the guided page tour.
-- A one-time hero prelude points out two capabilities and hands the same Actorble cursor to the demo.
+- A one-time hero prelude selects the core promise with Actorble, then hands the same cursor to the demo.
 - Page tour, single highlight, and DOM action examples run against useful elements already on the landing page.
 - The main sequence uses Actorble to select two real code tabs from its opening steps, then connects the result to the scenario and repository setup.
 - DOM action and navigation recipes remain visible as code without fabricating inputs or routes solely for the demo.
