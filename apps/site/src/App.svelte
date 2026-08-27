@@ -15,8 +15,13 @@
 
   function runDemo(id: DemoId, event?: MouseEvent): void {
     event?.preventDefault();
-    hero?.stopAmbientCursor();
+    hero?.handoffAmbientCursor();
     void landingDemo?.start(id);
+  }
+
+  function acquireActorble(): ReturnType<Hero["acquireActorble"]> {
+    if (!hero) throw new Error("The landing Actorble instance is not ready.");
+    return hero.acquireActorble();
   }
 
   function prepareDemo(id: DemoId): void {
@@ -53,4 +58,9 @@
 
 <Footer />
 
-<LandingDemo bind:this={landingDemo} onPrepare={prepareDemo} />
+<LandingDemo
+  bind:this={landingDemo}
+  {acquireActorble}
+  onPrepare={prepareDemo}
+  onCursorRelease={() => hero?.destroyActorbleCursor()}
+/>

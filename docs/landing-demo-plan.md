@@ -44,8 +44,10 @@ Driver.js 랜딩의 장점은 데모 UI가 정교해서가 아니라, **원래 �
 - 기본 CTA: `Show demo`
 - 보조 CTA: `Get started`
 - 우측에는 기존 Scenema 심볼을 브랜드 이미지로 사용
-- 데스크톱에서는 Actorble 커서가 제목과 `Show demo` 사이를 천천히 오가며 CTA를 가리킨다.
-- 주변 커서는 실제 클릭을 발생시키지 않으며, 스크롤·데모 시작·reduced motion에서 즉시 제거한다.
+- 데스크톱에서는 Actorble 커서가 `real DOM actions`, `page navigation`을 차례로 가리킨 뒤 `Show demo`에서 대기한다.
+- 각 문구와 CTA는 커서가 도착했을 때 한 번만 반응하며 연출을 무한 반복하지 않는다.
+- 사용자가 CTA에 접근하면 커서가 자리를 비켜주고, 데모를 시작하면 같은 커서 인스턴스가 첫 타깃으로 이어진다.
+- 주변 연출은 실제 클릭을 발생시키지 않으며 스크롤·모바일·reduced motion에서는 표시하지 않는다.
 
 제거 대상:
 

@@ -42,7 +42,7 @@ Do not switch typefaces, styles, or colors for a single word inside a heading.
 
 - `Button`: primary, secondary, and quiet variants share height, radius, type, and focus treatment.
 - `Header`: contains product identity, documentation, and source links.
-- `Hero`: names the product, starts the tour, and uses a non-clicking ambient Actorble cursor to draw attention to the demo action.
+- `Hero`: uses one Actorble cursor to connect the capability copy to the demo action, then hands that cursor to the running scenario.
 - `Examples`: launches the page tour, a single highlight, and a DOM action against existing page elements.
 - `LandingDemo`: opens the four-step page tour with consecutive Actorble clicks and coordinates two focused examples without rendering UI.
 - `CodeShowcase`: presents product tour, DOM action, and navigation recipes in one tabbed panel.

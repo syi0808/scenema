@@ -1,11 +1,26 @@
 <script lang="ts">
   import { createTourPresenter } from "@scenema/presenter";
-  import { createScenema, defineScenario, type Presenter, type Scenema } from "scenema";
+  import {
+    createScenema,
+    createScenemaActorble,
+    defineScenario,
+    type Actor,
+    type Presenter,
+    type Scenema,
+  } from "scenema";
   import { onMount, tick } from "svelte";
 
   import type { DemoId } from "./examples";
 
-  let { onPrepare }: { onPrepare: (id: DemoId) => void } = $props();
+  let {
+    acquireActorble,
+    onPrepare,
+    onCursorRelease,
+  }: {
+    acquireActorble: () => ReturnType<typeof createScenemaActorble>;
+    onPrepare: (id: DemoId) => void;
+    onCursorRelease: () => void;
+  } = $props();
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
   const pageTour = defineScenario({
@@ -139,28 +154,40 @@
       },
       dismiss: tourPresenter.dismiss,
     };
+    const actor: Actor = {
+      moveTo(target) {
+        return acquireActorble().moveTo(resolveTarget(target));
+      },
+      restoreCursor(target) {
+        return acquireActorble().moveTo(resolveTarget(target), { duration: 0 });
+      },
+      click(target) {
+        return acquireActorble().click(resolveTarget(target));
+      },
+      type(target, value) {
+        return acquireActorble().typeInto(resolveTarget(target), value);
+      },
+    };
 
     runtime = createScenema({
       scenarios,
-      actorble: {
-        feedback: "cursor",
-        motion: !reduceMotion,
-        ...(reduceMotion ? { actionDefaults: { typeInto: { delay: 0 } } } : {}),
-      },
+      actor,
       presenter,
       logger(message) {
         if (!message.endsWith("scenario complete")) return;
         const completedDemo = activeDemo;
         activeDemo = null;
         if (!completedDemo) return;
-        window.setTimeout(() =>
-          document.querySelector<HTMLElement>(focusTargets[completedDemo])?.focus(),
-        );
+        window.setTimeout(() => {
+          document.querySelector<HTMLElement>(focusTargets[completedDemo])?.focus();
+          onCursorRelease();
+        });
       },
       onError(error) {
         announcement = error.message;
         activeDemo = null;
         starting = false;
+        onCursorRelease();
       },
     });
 
@@ -176,7 +203,10 @@
       })
       .catch(() => undefined);
 
-    return () => runtime?.dispose();
+    return () => {
+      runtime?.dispose();
+      onCursorRelease();
+    };
   });
 
   export async function start(id: DemoId): Promise<void> {
@@ -193,6 +223,7 @@
     } catch (error) {
       announcement = error instanceof Error ? error.message : "The demo could not start.";
       activeDemo = null;
+      onCursorRelease();
     } finally {
       starting = false;
     }
@@ -201,6 +232,12 @@
   function sitePath(path: string): string {
     if (!basePrefix) return path;
     return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
+  }
+
+  function resolveTarget(selector: string): Element {
+    const target = document.querySelector(selector);
+    if (!target) throw new Error(`The demo target was not found: ${selector}`);
+    return target;
   }
 
   async function scrollTargetIntoView(target: Element, reduceMotion: boolean): Promise<void> {

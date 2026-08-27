@@ -267,6 +267,22 @@ a {
   line-height: 1.6;
 }
 
+.hero__term {
+  margin-inline: -2px;
+  padding-inline: 2px;
+  border-radius: 3px;
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.hero__term[data-actor-focused="true"] {
+  color: var(--ink);
+  background: var(--selection);
+  box-shadow: 0 0 0 3px var(--selection);
+}
+
 .hero__actions,
 .example-actions,
 .getting-started__actions > div {
@@ -277,6 +293,18 @@ a {
 
 .hero__actions {
   margin-top: var(--space-8);
+}
+
+.hero__actions[data-actor-ready="true"] #start-tour {
+  animation: actor-invite 620ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+@keyframes actor-invite {
+  45% {
+    border-color: var(--action-hover);
+    background: var(--action-hover);
+    transform: translateY(1px) scale(0.98);
+  }
 }
 
 .hero__symbol {
