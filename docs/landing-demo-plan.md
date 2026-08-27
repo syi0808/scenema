@@ -43,16 +43,16 @@ Driver.js 랜딩의 장점은 데모 UI가 정교해서가 아니라, **원래 �
 - 보조 문장: 사용자 진행, 실제 DOM 동작, 페이지 전환을 하나의 선언적 시나리오로 연결한다는 사실만 설명
 - 기본 CTA: `Show demo`
 - 보조 CTA: `Get started`
-- 우측에는 기존 Scenema 심볼을 브랜드 이미지로 사용
+- 우측에는 실제 랜딩 페이지를 축소한 제품 프리뷰를 사용
 
-### 3.2.1 Entry prompt
+### 3.2.1 Product animation
 
-- 세션의 첫 방문에는 `See Scenema in action?` 모달을 표시한다.
-- 행동은 `Run demo`와 `Not now` 두 개만 제공한다.
-- `Run demo`를 선택하면 별도 Actorble이 Hero의 `Show demo`를 누르고 네 Step의 `Next`와 `Finish`를 끝까지 누른다.
-- Scenema 내부 Actorble은 선언된 DOM action을 그대로 실행한다. 두 Actorble 커서의 시각적 구분은 이번 범위에서 다루지 않는다.
-- 어느 쪽을 선택해도 같은 세션에서는 모달을 다시 표시하지 않는다.
-- 별도 설명, 카운트다운, 완료 문구는 추가하지 않는다.
+- Hero 우측에는 실제 랜딩 페이지를 iframe으로 격리해 축소한 프리뷰를 배치한다.
+- 프리뷰 내부에서는 별도 Actorble이 실제 `Show demo`, 네 Step의 `Next`, `Finish`를 끝까지 누른다.
+- Scenema 내부 Actorble은 선언된 DOM action을 실제 랜딩 DOM에 그대로 실행한다.
+- iframe은 커서, 스크롤, 오버레이와 저장 상태를 부모 페이지로부터 격리하고 프레임 바깥을 잘라낸다.
+- 임의로 축약한 모조 UI, 진입 프롬프트, 별도 설명과 완료 문구는 추가하지 않는다.
+- 프리뷰 자신은 심볼을 표시해 동일 프리뷰가 재귀적으로 중첩되지 않도록 한다.
 
 제거 대상:
 
@@ -192,8 +192,8 @@ cd scenema && pnpm install
 ### 유지 및 단순화
 
 - `Header.svelte`: 데모 CTA와 Examples/Code 앵커 제거
-- `Hero.svelte`: 제목, 두 문장, CTA, 심볼만 렌더링
-- `LandingDemo.svelte`: 메인 투어와 독립 예제의 실행만 담당하고 DOM을 출력하지 않음
+- `Hero.svelte`: 제목, 두 문장, CTA와 격리된 실제 랜딩 프리뷰를 렌더링
+- `LandingDemo.svelte`: 메인 투어, 독립 예제와 iframe 프리뷰 자동 실행을 담당하고 DOM을 출력하지 않음
 - `CodeShowcase.svelte`: 세 개 코드 탭과 단일 코드 패널로 축소
 - `examples.ts`: 플레이그라운드 정의 대신 코드 예제와 실행 예제 메타데이터만 관리
 

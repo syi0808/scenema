@@ -3,11 +3,13 @@
   import { onMount } from "svelte";
 
   import Button from "./Button.svelte";
+  import HeroProductDemo from "./HeroProductDemo.svelte";
 
   let {
     assetPath,
     onStart,
-  }: { assetPath: string; onStart: (event?: MouseEvent) => void } = $props();
+    embedded = false,
+  }: { assetPath: string; onStart: (event?: MouseEvent) => void; embedded?: boolean } = $props();
 
   let cursor: ReturnType<typeof createScenemaActorble> | undefined;
 
@@ -48,6 +50,25 @@
       </div>
     </div>
 
-    <img class="hero__symbol" src={assetPath} alt="" width="420" height="420" />
+    {#if embedded}
+      <img class="hero__symbol" src={assetPath} alt="" width="420" height="420" />
+    {:else}
+      <HeroProductDemo />
+    {/if}
   </div>
 </section>
+
+<style>
+  .hero__symbol {
+    width: min(100%, 420px);
+    height: auto;
+    justify-self: end;
+  }
+
+  @media (max-width: 900px) {
+    .hero__symbol {
+      width: min(58vw, 320px);
+      justify-self: start;
+    }
+  }
+</style>

@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { onMount, tick } from "svelte";
+
   import CodeShowcase from "./lib/CodeShowcase.svelte";
-  import DemoPrompt from "./lib/DemoPrompt.svelte";
   import Examples from "./lib/Examples.svelte";
   import Footer from "./lib/Footer.svelte";
   import GettingStarted from "./lib/GettingStarted.svelte";
@@ -10,9 +11,26 @@
   import type { CodeExampleId, DemoId } from "./lib/examples";
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const heroPreview = new URLSearchParams(window.location.search).get("hero-preview") === "1";
   let landingDemo: LandingDemo | undefined = undefined;
   let hero: Hero | undefined = undefined;
   let selectedCode = $state<CodeExampleId>("product-tour");
+
+  onMount(() => {
+    if (!heroPreview) return;
+    let active = true;
+    void (async () => {
+      await tick();
+      await pause(800);
+      while (active) {
+        await landingDemo?.autoplay();
+        await pause(2_000);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  });
 
   function runDemo(id: DemoId, event?: MouseEvent): void {
     event?.preventDefault();
@@ -32,7 +50,13 @@
     if (!basePrefix) return path;
     return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
   }
+
+  function pause(duration: number): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, duration));
+  }
 </script>
+
+<svelte:body class:hero-preview={heroPreview} />
 
 <svelte:head>
   <title>Scenema — Declarative choreography for real web applications</title>
@@ -49,6 +73,7 @@
   <Hero
     bind:this={hero}
     assetPath={sitePath("/assets/scenema-symbol.png")}
+    embedded={heroPreview}
     onStart={(event) => runDemo("page-tour", event)}
   />
   <Examples onRun={runDemo} />
@@ -58,11 +83,10 @@
 
 <Footer />
 
-<DemoPrompt onRun={() => landingDemo?.autoplay()} />
-
 <LandingDemo
   bind:this={landingDemo}
   {acquireActorble}
+  isolated={heroPreview}
   onPrepare={prepareDemo}
   onCursorRelease={() => hero?.destroyActorbleCursor()}
 />

@@ -16,10 +16,12 @@
     acquireActorble,
     onPrepare,
     onCursorRelease,
+    isolated = false,
   }: {
     acquireActorble: () => ReturnType<typeof createScenemaActorble>;
     onPrepare: (id: DemoId) => void;
     onCursorRelease: () => void;
+    isolated?: boolean;
   } = $props();
 
   const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -174,6 +176,7 @@
       scenarios,
       actor,
       presenter,
+      ...(isolated ? { window: createIsolatedWindow(window), document } : {}),
       logger(message) {
         if (!message.endsWith("scenario complete")) return;
         const completedDemo = activeDemo;
@@ -251,7 +254,7 @@
       await director.click(resolveTarget("#start-tour"), { force: true });
       for (let step = 1; step <= pageTour.scenes[0].steps.length; step += 1) {
         const next = await waitForTourControl(step, pageTour.scenes[0].steps.length);
-        await pause(reduceMotion ? 200 : 1_200);
+        await pause(reduceMotion ? 200 : 1_100);
         await director.click(next, { force: true });
       }
       await waitForTourToClose();
@@ -301,6 +304,47 @@
 
   function pause(duration: number): Promise<void> {
     return new Promise((resolve) => window.setTimeout(resolve, duration));
+  }
+
+  function createIsolatedWindow(source: Window): Window {
+    const localStorage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
+    return new Proxy(source, {
+      get(target, property) {
+        if (property === "localStorage") return localStorage;
+        if (property === "sessionStorage") return sessionStorage;
+        const value = Reflect.get(target, property, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+  }
+
+  class MemoryStorage implements Storage {
+    readonly #values = new Map<string, string>();
+
+    get length(): number {
+      return this.#values.size;
+    }
+
+    clear(): void {
+      this.#values.clear();
+    }
+
+    getItem(key: string): string | null {
+      return this.#values.get(key) ?? null;
+    }
+
+    key(index: number): string | null {
+      return Array.from(this.#values.keys())[index] ?? null;
+    }
+
+    removeItem(key: string): void {
+      this.#values.delete(key);
+    }
+
+    setItem(key: string, value: string): void {
+      this.#values.set(key, String(value));
+    }
   }
 
   async function scrollTargetIntoView(target: Element, reduceMotion: boolean): Promise<void> {

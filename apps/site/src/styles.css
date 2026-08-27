@@ -64,6 +64,14 @@ body {
   background: var(--canvas);
 }
 
+body.hero-preview {
+  scrollbar-width: none;
+}
+
+body.hero-preview::-webkit-scrollbar {
+  display: none;
+}
+
 button,
 input {
   font: inherit;
@@ -222,36 +230,6 @@ a {
   background: transparent;
 }
 
-.demo-prompt {
-  width: min(420px, calc(100% - 32px));
-  margin: auto;
-  padding: var(--space-8);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-frame);
-  background: var(--surface-strong);
-  box-shadow: 0 24px 64px rgb(15 23 42 / 24%);
-}
-
-.demo-prompt::backdrop {
-  background: rgb(15 23 42 / 52%);
-}
-
-.demo-prompt h2 {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
-}
-
-.demo-prompt__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-8);
-}
-
 .button--small {
   min-height: 38px;
   padding-inline: 14px;
@@ -307,12 +285,6 @@ a {
 
 .hero__actions {
   margin-top: var(--space-8);
-}
-
-.hero__symbol {
-  width: min(100%, 420px);
-  height: auto;
-  justify-self: end;
 }
 
 .examples-section,
@@ -465,11 +437,6 @@ pre {
     min-height: auto;
   }
 
-  .hero__symbol {
-    width: min(58vw, 320px);
-    justify-self: start;
-  }
-
   .getting-started__grid {
     gap: var(--space-12);
   }
@@ -509,10 +476,6 @@ pre {
 
   .hero__description {
     font-size: 16px;
-  }
-
-  .hero__symbol {
-    width: min(60vw, 260px);
   }
 
   .section-heading {
