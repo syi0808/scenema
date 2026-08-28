@@ -221,7 +221,7 @@ export interface PendingOperation {
 }
 
 export interface ScenarioSession {
-  schemaVersion: 2;
+  schemaVersion: 1;
   id: string;
   scenarioId: string;
   scenarioVersion: number;

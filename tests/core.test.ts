@@ -111,7 +111,7 @@ describe("step builder", () => {
     expect(() =>
       defineScenario({
         id: "duplicate",
-        version: 2,
+        version: 1,
         steps: [
           { id: "same", operations: [] },
           { id: "same", operations: [] },
@@ -125,7 +125,7 @@ describe("ScenarioRuntime", () => {
   it("executes operations in source order and pauses at presentations", async () => {
     const scenario = defineScenario({
       id: "typing",
-      version: 2,
+      version: 1,
       steps: [
         step("name", (s) => {
           s.cursor.move("#name");
@@ -160,7 +160,7 @@ describe("ScenarioRuntime", () => {
   it("counts user presentations instead of steps", async () => {
     const scenario = defineScenario({
       id: "progress",
-      version: 2,
+      version: 1,
       steps: [
         step("one", (s) => {
           s.present({ title: "Loading", advance: "auto" });
@@ -193,7 +193,7 @@ describe("ScenarioRuntime", () => {
   it("moves back by presentation checkpoint without replaying effects", async () => {
     const scenario = defineScenario({
       id: "back",
-      version: 2,
+      version: 1,
       steps: [
         step("flow", (s) => {
           s.present("A");
@@ -233,7 +233,7 @@ describe("ScenarioRuntime", () => {
     });
     const scenario = defineScenario({
       id: "recover-click",
-      version: 2,
+      version: 1,
       steps: [
         step("flow", (s) => {
           s.present("Before");
@@ -263,7 +263,7 @@ describe("ScenarioRuntime", () => {
     const store = new MemoryStore();
     const scenario = defineScenario({
       id: "navigation",
-      version: 2,
+      version: 1,
       steps: [
         step("leave", (s) => {
           s.present("Leave");
@@ -296,7 +296,7 @@ describe("ScenarioRuntime", () => {
     const plugin = definePlugin({ operations: { "scroll.to": { execute } } });
     const scenario = defineScenario({
       id: "plugin",
-      version: 2,
+      version: 1,
       steps: [step("custom", (s) => s.use({ kind: "scroll.to", target: "#pricing" }))],
     });
     const { runtime } = createHarness({ operationHandlers: plugin.operations });
@@ -312,13 +312,13 @@ describe("ScenarioRuntime", () => {
 });
 
 describe("session codec", () => {
-  it("round-trips a v2 operation position", () => {
+  it("round-trips an operation position", () => {
     const session = deserializeSession(
       JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 1,
         id: "session",
         scenarioId: "demo",
-        scenarioVersion: 2,
+        scenarioVersion: 1,
         position: { stepId: "one", operationIndex: 3 },
         completedOperations: ["one/0", "one/1"],
         revision: 1,
@@ -333,10 +333,10 @@ describe("session codec", () => {
     expect(() =>
       deserializeSession(
         JSON.stringify({
-          schemaVersion: 3,
+          schemaVersion: 2,
           id: "session",
           scenarioId: "demo",
-          scenarioVersion: 2,
+          scenarioVersion: 1,
           position: { stepId: "one", operationIndex: 0 },
           completedOperations: [],
           revision: 1,

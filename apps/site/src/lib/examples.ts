@@ -26,7 +26,7 @@ export const codeExamples: readonly CodeExampleDefinition[] = [
     filename: "onboarding.ts",
     code: `const onboarding = defineScenario({
   id: "onboarding",
-  version: 2,
+  version: 1,
   steps: [
     step("create-project", (s) => {
       s.cursor.move("#create-project");

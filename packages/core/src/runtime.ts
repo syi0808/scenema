@@ -76,7 +76,7 @@ export class ScenarioRuntime {
     this.readyStepId = null;
     this.status = "running";
     this.session = {
-      schemaVersion: 2,
+      schemaVersion: 1,
       id: this.createId(),
       scenarioId: scenario.id,
       scenarioVersion: scenario.version,

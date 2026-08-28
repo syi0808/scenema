@@ -23,11 +23,11 @@ Builder method는 action을 수행하지 않고 ordered `Operation[]`를 기록�
 4. effect replay 제어
 5. plugin operation composition
 
-## Session V2
+## Session
 
 ```ts
 interface ScenarioSession {
-  schemaVersion: 2;
+  schemaVersion: 1;
   id: string;
   scenarioId: string;
   scenarioVersion: number;
@@ -131,7 +131,7 @@ Core runtime은 `Actor` port만 사용한다. Public facade는 기본적으로 `
 
 1. At-most-once와 navigation perform보다 prepared checkpoint가 먼저 저장된다.
 2. `sessionStorage`에는 현재 tab의 session ID만 저장된다.
-3. V2 session key는 `__scenema__:v2:session:<id>`다.
+3. Session key는 `__scenema__:v1:session:<id>`다.
 4. Position은 Step ID와 operation index로 구성된다.
 5. Completed effect는 back navigation으로 제거되거나 replay되지 않는다.
 6. Runtime-only target과 predicate는 session에 serialize하지 않는다.

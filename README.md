@@ -49,7 +49,7 @@ import { all, createScenema, defineScenario, pathname, step, visible } from "sce
 
 const onboarding = defineScenario({
   id: "onboarding",
-  version: 2,
+  version: 1,
   steps: [
     step("open-project", (s) => {
       s.cursor.move("#project");
@@ -184,7 +184,7 @@ Sessions use schema version 2 and semantic operation addresses such as `project-
 
 ```text
 sessionStorage                      localStorage
-active session id ────────────────→ __scenema__:v2:session:<id>
+active session id ────────────────→ __scenema__:v1:session:<id>
                                     stepId · operationIndex · completedOperations
 ```
 
@@ -225,7 +225,7 @@ rules automatically.
 
 | Package                | Responsibility                                                   |
 | ---------------------- | ---------------------------------------------------------------- |
-| `@scenema/core`        | Operation DSL, validation, v2 sessions, and durable runtime      |
+| `@scenema/core`        | Operation DSL, validation, sessions, and durable runtime         |
 | `@scenema/runtime-web` | DOM target resolution, conditions, storage, navigation observers |
 | `@scenema/presenter`   | Accessible Shadow DOM tour presenter                             |
 | `scenema`              | Actorble-backed facade, registry, bootstrap, and plugin wiring   |
@@ -248,7 +248,7 @@ Implemented:
 - CSS selector, DOM `Node`, and target resolver support
 - Composable readiness and wait conditions
 - Durable same-origin SPA and MPA navigation
-- V2 local persistence and automatic bootstrap reconciliation
+- Local persistence and automatic bootstrap reconciliation
 - Custom operation registration through plugins
 
 Future design work includes exact Node geometry rules, navigation crash protocols, branching,

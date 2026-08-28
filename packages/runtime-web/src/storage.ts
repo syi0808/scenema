@@ -5,8 +5,8 @@ import {
   type SessionStore,
 } from "@scenema/core";
 
-export const ACTIVE_SESSION_KEY = "__scenema__:v2:active-session";
-export const SESSION_KEY_PREFIX = "__scenema__:v2:session:";
+export const ACTIVE_SESSION_KEY = "__scenema__:v1:active-session";
+export const SESSION_KEY_PREFIX = "__scenema__:v1:session:";
 
 export class LocalStorageSessionStore implements SessionStore {
   constructor(

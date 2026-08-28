@@ -20,14 +20,14 @@ afterEach(() => {
 });
 
 describe("web persistence", () => {
-  it("stores v2 operation sessions and an active pointer", () => {
+  it("stores operation sessions and an active pointer", () => {
     const pointer = new ActiveSessionPointer(sessionStorage);
     const store = new LocalStorageSessionStore(localStorage);
     const session: ScenarioSession = {
-      schemaVersion: 2,
+      schemaVersion: 1,
       id: "abc",
       scenarioId: "demo",
-      scenarioVersion: 2,
+      scenarioVersion: 1,
       position: { stepId: "one", operationIndex: 1 },
       completedOperations: ["one/0"],
       revision: 2,
@@ -39,7 +39,7 @@ describe("web persistence", () => {
 
     expect(sessionStorage.getItem(ACTIVE_SESSION_KEY)).toBe("abc");
     expect(store.read("abc")).toEqual(session);
-    expect(localStorage.getItem("__scenema__:v2:session:abc")).not.toBeNull();
+    expect(localStorage.getItem("__scenema__:v1:session:abc")).not.toBeNull();
   });
 });
 
@@ -100,7 +100,7 @@ describe("document-lifetime recovery", () => {
     document.body.innerHTML = '<button id="next">Next</button>';
     const scenario = defineScenario({
       id: "mpa",
-      version: 2,
+      version: 1,
       steps: [
         step("leave", (s) => {
           s.present({ target: "#next", title: "Leave" });

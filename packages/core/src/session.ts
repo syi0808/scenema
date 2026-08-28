@@ -20,7 +20,7 @@ export function deserializeSession(serialized: string): ScenarioSession {
     throw invalidSession("Session must be an object with a position.");
   }
   if (
-    value.schemaVersion !== 2 ||
+    value.schemaVersion !== 1 ||
     !isString(value.id) ||
     !isString(value.scenarioId) ||
     !isPositiveInteger(value.scenarioVersion) ||
