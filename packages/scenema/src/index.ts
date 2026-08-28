@@ -30,8 +30,6 @@ export interface ScenemaOptions {
   plugins?: readonly PluginDefinition[];
   window?: Window;
   document?: Document;
-  /** @deprecated Use navigationTimeout. */
-  transitionTimeout?: number;
   navigationTimeout?: number;
   conditionTimeout?: number;
   clickDelay?: number;
@@ -49,8 +47,6 @@ export interface Scenema {
   bootstrap(): Promise<boolean>;
   proceed(): Promise<void>;
   back(): Promise<void>;
-  /** @deprecated Use back(). */
-  previous(): Promise<void>;
   stop(): void;
   inspect(): RuntimeInspection;
   dispose(): void;
@@ -96,11 +92,9 @@ export function createScenema(options: ScenemaOptions): Scenema {
     resolveTarget: (target) => resolveDomTarget(document, target),
     clickDelay: Math.max(0, options.clickDelay ?? SCENEMA_CLICK_DELAY),
     cursorMoveDelay: Math.max(0, options.cursorMoveDelay ?? SCENEMA_CURSOR_MOVE_DELAY),
-    ...(options.navigationTimeout === undefined && options.transitionTimeout === undefined
+    ...(options.navigationTimeout === undefined
       ? {}
-      : {
-          defaultNavigationTimeout: options.navigationTimeout ?? options.transitionTimeout,
-        }),
+      : { defaultNavigationTimeout: options.navigationTimeout }),
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.onError ? { onError: options.onError } : {}),
     onSessionChange(session, status: RuntimeStatus) {
@@ -179,7 +173,6 @@ export function createScenema(options: ScenemaOptions): Scenema {
     },
     proceed: () => runtime.proceed(),
     back: () => runtime.back(),
-    previous: () => runtime.previous(),
     stop() {
       runtime.stop();
       activeSession.clear();

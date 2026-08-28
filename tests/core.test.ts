@@ -329,17 +329,16 @@ describe("session codec", () => {
     expect(session.position).toEqual({ stepId: "one", operationIndex: 3 });
   });
 
-  it("rejects a v1 lifecycle session", () => {
+  it("rejects an unsupported session schema", () => {
     expect(() =>
       deserializeSession(
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 3,
           id: "session",
           scenarioId: "demo",
-          scenarioVersion: 1,
-          sceneId: "a",
-          stepId: "one",
-          phase: "present",
+          scenarioVersion: 2,
+          position: { stepId: "one", operationIndex: 0 },
+          completedOperations: [],
           revision: 1,
           updatedAt: 1,
         }),

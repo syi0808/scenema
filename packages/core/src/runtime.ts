@@ -161,11 +161,6 @@ export class ScenarioRuntime {
     return this.activeOperation;
   }
 
-  /** @deprecated Use back(). */
-  previous(): Promise<void> {
-    return this.back();
-  }
-
   stop(): void {
     this.options.presenter.dismiss();
     if (this.session) {

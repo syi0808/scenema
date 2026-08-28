@@ -158,8 +158,6 @@ with `advance: "auto"` are excluded. `scenema.back()` moves to the previous user
 checkpoint without undoing application effects. Proceeding again skips operations already recorded
 as complete, so clicks and other effects are not replayed.
 
-`scenema.previous()` remains as a deprecated alias for `back()` during migration.
-
 ## Durable Navigation
 
 Use a normal action for an effect inside the current runtime lifetime:
@@ -254,7 +252,7 @@ Implemented:
 - Custom operation registration through plugins
 
 Future design work includes exact Node geometry rules, navigation crash protocols, branching,
-dynamic workflows, a serializable subset, presenter customization, and v1-to-v2 migration policy.
+dynamic workflows, a serializable subset, and presenter customization.
 
 ## Design Principle
 
