@@ -5,89 +5,84 @@
 <h1 align="center">Scenema</h1>
 
 <p align="center">
-  <strong>Declarative choreography for real web applications.</strong>
+  <strong>Durable choreography for real web applications.</strong>
   <br>
-  Guide people through your product with real DOM interactions that survive SPA and MPA navigation.
+  Describe UI flows in execution order and keep them running across SPA and MPA navigation.
 </p>
 
-<p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="./docs/architecture.md">Architecture</a> ·
-  <a href="#landing--live-demo">Live demo</a>
-</p>
+> **Early MVP:** Scenema is under active development. The operation protocol is implemented, but
+> advanced workflow, branching, and serialization APIs are still being designed.
 
-> **Early MVP:** Scenema is under active development. The runtime protocol is implemented; the public API may still change.
+## Mental Model
 
-## Why Scenema?
+```text
+Scenario
+└─ Step
+   ├─ ready?              optional environment check
+   ├─ cursor.move
+   ├─ present
+   ├─ click / type / press
+   ├─ waitFor
+   ├─ navigate
+   └─ custom operation
+```
 
-Most product tours explain an interface from the outside. Scenema acts on the real interface.
-
-- **The user controls the pace.** A step pauses until `proceed()` is called.
-- **Scenema controls the choreography.** Actors move, click, and type against real DOM targets.
-- **Navigation is scenario state.** Transitions explicitly name their destination Scene.
-- **Progress outlives the runtime.** Synchronous checkpoints restore a scenario after reloads and full document navigation.
-- **SPA and MPA share one DSL.** Router and document lifetime differences stay inside the web runtime.
+Steps are logical choreography units, not pages or popups. A step can contain any number of
+presentations and effects. Operations execute in the same order in which they are defined.
 
 ## Quick Start
-
-Scenema is currently developed as an npm workspace. Clone the repository and run it locally:
 
 ```sh
 git clone https://github.com/syi0808/scenema.git
 cd scenema
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Open `http://localhost:5173` and run the guided scenario directly inside the landing page.
+The landing page at `http://localhost:5173` runs real scenarios against its own controls.
 
 ## Define a Scenario
 
 ```ts
 import { createTourPresenter } from "@scenema/presenter";
-import { createScenema, defineScenario } from "scenema";
+import { all, createScenema, defineScenario, pathname, step, visible } from "scenema";
 
 const onboarding = defineScenario({
   id: "onboarding",
-  version: 1,
-  scenes: [
-    {
-      id: "projects",
-      match: {
-        pathname: "/projects",
-        visible: "#project-list",
+  version: 2,
+  steps: [
+    step("open-project", (s) => {
+      s.cursor.move("#project");
+      s.present({
+        target: "#project",
+        title: "Open this project",
+      });
+      s.navigate.click("#project");
+    }),
+
+    step(
+      "project-detail",
+      {
+        ready: all(pathname(/^\/projects\//), visible("#project-detail")),
       },
-      steps: [
-        {
-          id: "create-project",
-          target: "#create-project",
-          enter: { cursor: "move" },
-          present: { title: "Create a project" },
-          transition: {
-            trigger: { click: true },
-            to: "project-create",
-          },
-        },
-      ],
-    },
-    {
-      id: "project-create",
-      match: {
-        pathname: "/projects/new",
-        visible: "#project-form",
+      (s) => {
+        s.present({
+          target: "#project-title",
+          title: "Project detail",
+        });
+        s.present({
+          target: "#settings",
+          title: "Open settings",
+        });
+        s.click("#settings");
       },
-      steps: [
-        {
-          id: "project-name",
-          target: "#project-name",
-          enter: { cursor: "move" },
-          present: { title: "Choose a name" },
-          commit: { type: { value: "My Project" } },
-          exit: { until: { value: "My Project" } },
-        },
-      ],
-    },
+    ),
+
+    step("edit-name", { ready: visible("#project-form") }, (s) => {
+      s.present({ target: "#name", title: "Change the name" });
+      s.type("#name", "Scenema");
+      s.waitFor.value("#name", "Scenema");
+    }),
   ],
 });
 
@@ -101,127 +96,169 @@ if (!(await scenema.bootstrap())) {
 }
 ```
 
-Every document registers the same scenario and calls `bootstrap()`. If the current tab has an active session, Scenema restores it. Otherwise, `bootstrap()` returns `false` and the application can start a new session explicitly.
+The builder callback runs once while the definition is created. It records operations; it is not an
+async runtime callback. This keeps scenarios deterministic, inspectable, and resumable.
 
-Scenema creates an `@actorble/browser` instance lazily and runs every interaction through its internal actor adapter. The pointer starts at the center of the current viewport, and Scenema destroys the Actorble cursor and instance when the tour completes or stops. A later tour gets a fresh instance. Actorble can be configured with the `actorble` option. Advanced integrations can still replace the internal boundary with a custom `Actor` through the `actor` option.
+## Declarative Definitions
 
-The built-in choreography uses perceptible pacing by default: after the user proceeds, automated clicks wait `300ms` before starting; after an automated action, the next cursor move pauses for `300ms`; pointer movement follows an `ease-in-out` curve for `800ms`; clicks, including the click used to focus an input before typing, approach over `1000ms` and hold for `240ms`; and typing waits `100ms` between characters. The Actorble cursor is rendered at `2x` its standard size for visibility. Override the pauses with `clickDelay` and `cursorMoveDelay`, override individual action values through `actorble.actionDefaults`, provide a custom `actorble.visualLayer` for different cursor rendering, or set `actorble.motion` to `false` when pointer motion should be disabled.
-
-The tour presenter highlights the current target with a dimmed overlay. Because the runtime dismisses the presenter before Actorble moves and presents the next step only after the cursor arrives, the overlay fades away while the cursor is in motion and returns smoothly around the target when it stops:
+The builder produces the same structure accepted by the runtime directly:
 
 ```ts
-createTourPresenter({
-  overlay: {
-    delay: 240,
-    duration: 320,
-    opacity: 0.72,
-    padding: 8,
-    borderRadius: 10,
-    focusRing: false,
+const stepDefinition = {
+  id: "project-name",
+  operations: [
+    { kind: "cursor.move", target: "#name" },
+    {
+      kind: "present",
+      target: "#name",
+      content: { title: "Choose a name" },
+    },
+    { kind: "type", target: "#name", value: "Scenema" },
+    {
+      kind: "wait",
+      condition: { kind: "value", target: "#name", value: "Scenema" },
+    },
+  ],
+};
+```
+
+Runtime scenarios may use selector strings, DOM `Node` objects, async target resolvers, predicate
+readiness checks, and custom operations. A future serializable definition will be a restricted
+subset rather than a constraint on the runtime model.
+
+## Readiness
+
+Scenema trusts the current application state unless a step declares `ready`. Built-in conditions
+are composable:
+
+```ts
+step(
+  "project-detail",
+  {
+    ready: all(pathname(/^\/projects\//), visible("#project-detail")),
+  },
+  (s) => {
+    // Runs after both conditions are satisfied.
+  },
+);
+```
+
+Use `exists(target)` for DOM presence and `visible(target)` for presence, rendered visibility, and
+non-empty geometry. Readiness also accepts synchronous or asynchronous observation predicates:
+
+```ts
+ready: async ({ document, location }) =>
+  location.pathname.startsWith("/projects/") && document.querySelector("#project-detail") !== null;
+```
+
+## Progress and Back
+
+Presenter progress counts presentations that require user advancement, not steps. Presentations
+with `advance: "auto"` are excluded. `scenema.back()` moves to the previous user presentation
+checkpoint without undoing application effects. Proceeding again skips operations already recorded
+as complete, so clicks and other effects are not replayed.
+
+`scenema.previous()` remains as a deprecated alias for `back()` during migration.
+
+## Durable Navigation
+
+Use a normal action for an effect inside the current runtime lifetime:
+
+```ts
+s.click("#save");
+```
+
+Mark an action that may end the document or runtime lifetime explicitly:
+
+```ts
+s.navigate.click("#project-link");
+```
+
+Before navigation, Scenema writes a prepared operation checkpoint. SPA observation or a later MPA
+`bootstrap()` advances to the following step, evaluates its `ready` condition, and resumes the same
+session.
+
+```text
+checkpoint → perform → runtime may disappear → bootstrap → next Step ready → continue
+```
+
+Sessions use schema version 2 and semantic operation addresses such as `project-detail/3`:
+
+```text
+sessionStorage                      localStorage
+active session id ────────────────→ __scenema__:v2:session:<id>
+                                    stepId · operationIndex · completedOperations
+```
+
+## Custom Operations
+
+Plugins extend the operation registry without modifying `StepBuilder`:
+
+```ts
+const scrolling = definePlugin({
+  operations: {
+    "scroll.to": {
+      durability: "replay-safe",
+      async execute(operation, context) {
+        const target = await context.resolveTarget(operation.target);
+        // Execute the custom behavior.
+      },
+    },
   },
 });
-```
 
-Set `overlay: false` to keep the card without dimming or highlighting.
-Set `focusRing: true` to draw a border around the highlighted area; it is disabled by default.
-The highlight preserves the target's corner shape and expands a non-zero target radius by `padding`
-so circles remain circular. Targets without a radius keep a square highlight; for rounded targets,
-`borderRadius` acts as the minimum highlight radius.
+step("pricing", (s) => {
+  s.use({ kind: "scroll.to", target: "#pricing" });
+  s.present({ target: "#pricing", title: "Pricing" });
+});
 
-The presenter automatically keeps the card inside the visible scrollport without covering the
-highlighted target. It retains the current side while that placement remains viable and only moves
-the card when the viewport makes the placement invalid. An offscreen target is evaluated against
-the scroll position where it can be revealed, so targets near the end of a page receive the same
-protection before scrolling begins.
-
-Use `preferredPlacement` when a composition has an intentional direction. The preference wins when
-it remains visible and does not cover the target; otherwise the presenter falls back to a safe side.
-Pass a resolver to express a preference for individual steps without turning placement into scenario
-reading-order metadata:
-
-```ts
-createTourPresenter({
-  preferredPlacement: ({ stepId }) => (stepId === "footer-action" ? "top" : undefined),
+createScenema({
+  scenarios: [scenario],
+  plugins: [scrolling],
+  presenter: createTourPresenter(),
 });
 ```
 
-While a step has a `commit` or `transition`, the tour presenter makes the application inert until
-the user proceeds. This prevents pointer, keyboard, and focus interactions from racing ahead of the
-runtime. Informational steps without an automated action remain interactive.
-
-## How It Works
-
-```text
-ENTER → PRESENT → user proceeds → CHECKPOINT → PERFORM → RECONCILE
-                                                    │
-                          ┌─────────────────────────┴─────────────────────────┐
-                          │                                                   │
-                     SPA runtime lives                               MPA runtime restarts
-                          │                                                   │
-                          └──────────────────── same session ─────────────────┘
-```
-
-Before an action that may navigate, Scenema synchronously writes a prepared transition checkpoint. The current runtime can then disappear without losing the logical scenario state.
-
-```text
-sessionStorage                         localStorage
-active session id ───────────────────→ __scenema__:v1:session:<id>
-                                      scene · step · phase · transition
-```
-
-The runtime never relies on `beforeunload` for critical persistence. SPA route changes, MPA bootstrap, reload, browser history, and BFCache restoration all converge on `reconcile()`. Cursor recovery stores the last semantic target rather than viewport coordinates, so a reload resolves the cursor against the current layout and restores it without replaying the enter animation.
+Operation handlers declare `replay-safe`, `at-most-once`, or `reconcile` durability. Built-in
+cursor, presentation, wait, action, and navigation operations apply their corresponding checkpoint
+rules automatically.
 
 ## Packages
 
-| Package                | Responsibility                                                |
-| ---------------------- | ------------------------------------------------------------- |
-| `@scenema/core`        | Scenario DSL, validation, session codec, guided state machine |
-| `@scenema/runtime-web` | DOM matching, conditions, storage, navigation observation     |
-| `@scenema/presenter`   | Accessible Shadow DOM tour presenter                          |
-| `scenema`              | Actorble-backed runtime, registry, bootstrap, and public API  |
-
-## Landing & Live Demo
-
-The Svelte app in `apps/site` combines the product story and its proof:
-
-- `/` is both the landing page and the target of the guided page tour.
-- The hero embeds the real landing page in an isolated preview where Actorble clicks `Show demo`, every `Next`, and `Finish`.
-- Page tour, single highlight, and DOM action examples run against useful elements already on the landing page.
-- The main sequence uses Actorble to select two real code tabs from its opening steps, then connects the result to the scenario and repository setup.
-- DOM action and navigation recipes remain visible as code without fabricating inputs or routes solely for the demo.
-
-The UI supports keyboard navigation, responsive layouts, reduced motion, and independently runnable examples.
+| Package                | Responsibility                                                   |
+| ---------------------- | ---------------------------------------------------------------- |
+| `@scenema/core`        | Operation DSL, validation, v2 sessions, and durable runtime      |
+| `@scenema/runtime-web` | DOM target resolution, conditions, storage, navigation observers |
+| `@scenema/presenter`   | Accessible Shadow DOM tour presenter                             |
+| `scenema`              | Actorble-backed facade, registry, bootstrap, and plugin wiring   |
 
 ## Development
 
 ```sh
-npm run typecheck   # TypeScript project references
-npm test            # Core, web runtime, persistence, and demo flow
-npm run build       # Build all library packages
-npm run build:site  # Build packages and the landing/demo site
+pnpm typecheck
+pnpm test
+pnpm lint
+pnpm build:site
 ```
 
 ## Current Scope
 
-Supported:
+Implemented:
 
-- Guided execution with `proceed()`, `previous()`, and `stop()`
-- CSS selector targets and real DOM interactions
-- Same-origin SPA and MPA navigation
-- URL and visible-element Scene matching
-- Reload, history, redirect, and BFCache reconciliation
-- Per-tab active sessions backed by synchronous `localStorage` checkpoints
+- Flat ordered steps and programmatic/declarative operations
+- Multiple presentations per step with checkpoint-based progress and back navigation
+- CSS selector, DOM `Node`, and target resolver support
+- Composable readiness and wait conditions
+- Durable same-origin SPA and MPA navigation
+- V2 local persistence and automatic bootstrap reconciliation
+- Custom operation registration through plugins
 
-Not yet included:
-
-- Cross-origin navigation and cross-origin iframes
-- Multi-tab coordination and session handoff
-- Auto and interactive execution modes
-- Visual scenario editor and AI-generated scenarios
-- Published npm packages and framework-specific router adapters
+Future design work includes exact Node geometry rules, navigation crash protocols, branching,
+dynamic workflows, a serializable subset, presenter customization, and v1-to-v2 migration policy.
 
 ## Design Principle
 
 > **Persist → Perform → Reconcile**
 
-Scenema treats browser navigation as part of the scenario—not an implementation detail.
+Scenema expresses UI choreography as a sequence and preserves that sequence across browser
+lifetimes.

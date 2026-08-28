@@ -1,37 +1,18 @@
 import {
   ScenemaError,
+  normalizeReady,
+  type Condition,
   type ConditionWaiter,
-  type SceneDefinition,
-  type SceneMatcher,
+  type ReadyCondition,
+  type ResolvedTarget,
   type Target,
-  type UntilCondition,
+  type TargetContext,
+  type WaitOptions,
 } from "@scenema/core";
 
 export interface DomEnvironment {
   window: Window;
   document: Document;
-}
-
-export class DomSceneMatcher implements SceneMatcher {
-  constructor(private readonly environment: DomEnvironment) {}
-
-  async matches(scene: SceneDefinition): Promise<boolean> {
-    const { location } = this.environment.window;
-    const { match } = scene;
-    if (typeof match.pathname === "string" && location.pathname !== match.pathname) return false;
-    if (match.pathname instanceof RegExp) {
-      match.pathname.lastIndex = 0;
-      if (!match.pathname.test(location.pathname)) return false;
-    }
-    if (match.hash !== undefined && location.hash !== match.hash) return false;
-    if (match.search) {
-      const params = new URLSearchParams(location.search);
-      for (const [key, value] of Object.entries(match.search)) {
-        if (params.get(key) !== value) return false;
-      }
-    }
-    return !match.visible || this.environment.document.querySelector(match.visible) !== null;
-  }
 }
 
 export class DomConditionWaiter implements ConditionWaiter {
@@ -41,19 +22,15 @@ export class DomConditionWaiter implements ConditionWaiter {
     private readonly pollInterval = 50,
   ) {}
 
-  async waitFor(condition: UntilCondition, fallbackTarget?: Target): Promise<void> {
-    const timeout = condition.timeout ?? this.defaultTimeout;
+  async waitFor(condition: ReadyCondition, options?: WaitOptions): Promise<void> {
+    const timeout = options?.timeout ?? this.defaultTimeout;
     const startedAt = Date.now();
-    while (!this.satisfied(condition, fallbackTarget)) {
+    while (!(await this.satisfied(normalizeReady(condition)))) {
       if (Date.now() - startedAt >= timeout) {
-        throw new ScenemaError(
-          "TARGET_NOT_FOUND",
-          "Exit condition was not satisfied before timeout.",
-          {
-            condition,
-            fallbackTarget,
-          },
-        );
+        throw new ScenemaError("TARGET_NOT_FOUND", "Condition was not satisfied before timeout.", {
+          condition,
+          timeout,
+        });
       }
       await new Promise((resolve) =>
         this.environment.window.setTimeout(resolve, this.pollInterval),
@@ -61,30 +38,102 @@ export class DomConditionWaiter implements ConditionWaiter {
     }
   }
 
-  private satisfied(condition: UntilCondition, fallbackTarget?: Target): boolean {
-    if (condition.visible && !this.environment.document.querySelector(condition.visible))
-      return false;
-    if (condition.value !== undefined) {
-      if (!fallbackTarget) return false;
-      const element = this.environment.document.querySelector(fallbackTarget);
-      if (!element || !("value" in element) || typeof element.value !== "string") return false;
-      if (element.value !== condition.value) return false;
+  private async satisfied(condition: ReadyCondition): Promise<boolean> {
+    if (typeof condition === "function") return condition(this.context());
+    if (!("kind" in condition)) return this.satisfied(normalizeReady(condition));
+    return this.satisfiedCondition(condition);
+  }
+
+  private async satisfiedCondition(condition: Condition): Promise<boolean> {
+    switch (condition.kind) {
+      case "exists":
+        return (await queryDomTarget(this.environment.document, condition.target)) !== null;
+      case "visible": {
+        const target = await queryDomTarget(this.environment.document, condition.target);
+        return target !== null && isDomTargetVisible(this.environment.window, target);
+      }
+      case "value": {
+        const target = await queryDomTarget(this.environment.document, condition.target);
+        return (
+          target !== null &&
+          "value" in target &&
+          typeof target.value === "string" &&
+          target.value === condition.value
+        );
+      }
+      case "pathname": {
+        const pathname = this.environment.window.location.pathname;
+        if (typeof condition.pathname === "string") return pathname === condition.pathname;
+        condition.pathname.lastIndex = 0;
+        return condition.pathname.test(pathname);
+      }
+      case "all": {
+        for (const child of condition.conditions) {
+          if (!(await this.satisfied(normalizeReady(child)))) return false;
+        }
+        return true;
+      }
+      case "any": {
+        for (const child of condition.conditions) {
+          if (await this.satisfied(normalizeReady(child))) return true;
+        }
+        return false;
+      }
     }
-    return true;
+  }
+
+  private context(): TargetContext {
+    return {
+      document: this.environment.document,
+      location: this.environment.window.location,
+    };
   }
 }
 
-export function resolveDomTarget(document: Document, target: Target): Element {
-  let element: Element | null;
-  try {
-    element = document.querySelector(target);
-  } catch (cause) {
-    throw new ScenemaError("TARGET_NOT_FOUND", `Target selector is invalid: ${target}`, {
-      target,
-      cause,
-    });
+export async function resolveDomTarget(document: Document, target: Target): Promise<Node> {
+  const resolved = await queryDomTarget(document, target);
+  if (!resolved) {
+    throw new ScenemaError("TARGET_NOT_FOUND", "Target was not found.", { target });
   }
-  if (!element)
-    throw new ScenemaError("TARGET_NOT_FOUND", `Target was not found: ${target}`, { target });
-  return element;
+  return resolved;
+}
+
+export async function queryDomTarget(document: Document, target: Target): Promise<Node | null> {
+  if (typeof target === "string") {
+    try {
+      return document.querySelector(target);
+    } catch (cause) {
+      throw new ScenemaError("TARGET_NOT_FOUND", `Target selector is invalid: ${target}`, {
+        target,
+        cause,
+      });
+    }
+  }
+  if (typeof target === "function") {
+    return target({ document, location: document.defaultView?.location ?? globalThis.location });
+  }
+  return target;
+}
+
+export function isDomTargetVisible(window: Window, target: ResolvedTarget): boolean {
+  if (typeof target === "string") return false;
+  const element = target.nodeType === 1 ? (target as Element) : target.parentElement;
+  if (!element) return false;
+  const style = window.getComputedStyle(element);
+  if (
+    style.display === "none" ||
+    style.visibility === "hidden" ||
+    style.visibility === "collapse"
+  ) {
+    return false;
+  }
+  if (target.nodeType === 1) {
+    const rect = (target as Element).getBoundingClientRect();
+    return (target as Element).getClientRects().length > 0 || rect.width > 0 || rect.height > 0;
+  }
+  const range = target.ownerDocument?.createRange();
+  if (!range) return false;
+  range.selectNode(target);
+  const rect = range.getBoundingClientRect();
+  return range.getClientRects().length > 0 || rect.width > 0 || rect.height > 0;
 }

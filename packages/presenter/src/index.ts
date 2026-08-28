@@ -1,4 +1,4 @@
-import type { Presenter, PresenterContext, StepPresentation } from "@scenema/core";
+import type { PresentContent, Presenter, PresenterContext, ResolvedTarget } from "@scenema/core";
 
 export interface TourOverlayOptions {
   color?: string;
@@ -117,7 +117,7 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
   };
 
   return {
-    present(presentation: StepPresentation, context: PresenterContext) {
+    present(presentation: PresentContent, context: PresenterContext) {
       dismiss();
       host = document.createElement("div");
       host.dataset.scenemaPresenter = "tour";
@@ -175,15 +175,15 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const description = root.querySelector("p")!;
       description.textContent = presentation.description ?? "";
       if (!presentation.description) description.remove();
-      root.querySelector(".progress")!.textContent =
-        `${context.stepNumber} / ${context.totalSteps}`;
+      const progress = context.progress;
+      root.querySelector(".progress")!.textContent = `${progress.current} / ${progress.total}`;
       const back = root.querySelector<HTMLButtonElement>(".back")!;
       back.textContent = options.backLabel ?? "Back";
-      back.hidden = !context.canPrevious;
-      back.addEventListener("click", context.controls.previous);
+      back.hidden = !context.canBack;
+      back.addEventListener("click", context.controls.back);
       const next = root.querySelector<HTMLButtonElement>(".next")!;
       next.textContent =
-        options.nextLabel ?? (context.stepNumber === context.totalSteps ? "Finish" : "Next");
+        options.nextLabel ?? (progress.current === progress.total ? "Finish" : "Next");
       next.addEventListener("click", context.controls.proceed);
       host.style.position = "absolute";
       (container ?? document.body).append(host);
@@ -196,13 +196,16 @@ export function createTourPresenter(options: TourPresenterOptions = {}): Present
       const overlayController = overlay
         ? createOverlayController(overlayRoot, scene, document, overlay, container)
         : null;
-      const preferredPlacement = resolvePreferredPlacement(options.preferredPlacement, context);
+      const preferredPlacement =
+        context.placement && context.placement !== "auto"
+          ? context.placement
+          : resolvePreferredPlacement(options.preferredPlacement, context);
       let cardPlacement: TourCardPlacement | null = null;
       const updatePosition = () => {
         const surface = surfaceSize(document, container);
         host!.style.width = `${surface.width}px`;
         host!.style.height = `${surface.height}px`;
-        const target = context.target ? document.querySelector(context.target) : null;
+        const target = resolvePresenterTarget(document, context.target);
         const highlight = overlayController?.update(target);
         cardPlacement = positionCard(
           card,
@@ -301,6 +304,15 @@ function resolvePreferredPlacement(
   context: PresenterContext,
 ): TourCardPlacement | undefined {
   return typeof preference === "function" ? preference(context) : preference;
+}
+
+function resolvePresenterTarget(
+  document: Document,
+  target: ResolvedTarget | undefined,
+): Element | null {
+  if (target === undefined) return null;
+  if (typeof target === "string") return document.querySelector(target);
+  return target.nodeType === 1 ? (target as Element) : target.parentElement;
 }
 
 function sizeCard(

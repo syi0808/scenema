@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 
-import { deserializeSession, type ScenarioSession } from "@scenema/core";
-import { createScenema, defineScenario, type Presenter } from "scenema";
+import { all, exists, pathname, type ScenarioSession } from "@scenema/core";
+import { createScenema, defineScenario, step, type Presenter } from "scenema";
 import {
   ACTIVE_SESSION_KEY,
   ActiveSessionPointer,
   DomConditionWaiter,
-  DomSceneMatcher,
   LocalStorageSessionStore,
   createNavigationObserver,
+  resolveDomTarget,
 } from "@scenema/runtime-web";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -20,17 +20,16 @@ afterEach(() => {
 });
 
 describe("web persistence", () => {
-  it("stores the active pointer per tab and sessions in local storage", () => {
+  it("stores v2 operation sessions and an active pointer", () => {
     const pointer = new ActiveSessionPointer(sessionStorage);
     const store = new LocalStorageSessionStore(localStorage);
     const session: ScenarioSession = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: "abc",
       scenarioId: "demo",
-      scenarioVersion: 1,
-      sceneId: "main",
-      stepId: "one",
-      phase: "present",
+      scenarioVersion: 2,
+      position: { stepId: "one", operationIndex: 1 },
+      completedOperations: ["one/0"],
       revision: 2,
       updatedAt: 10,
     };
@@ -40,40 +39,46 @@ describe("web persistence", () => {
 
     expect(sessionStorage.getItem(ACTIVE_SESSION_KEY)).toBe("abc");
     expect(store.read("abc")).toEqual(session);
-    expect(deserializeSession(localStorage.getItem("__scenema__:v1:session:abc")!)).toEqual(
-      session,
-    );
+    expect(localStorage.getItem("__scenema__:v2:session:abc")).not.toBeNull();
   });
 });
 
 describe("DOM runtime primitives", () => {
-  it("matches URL and visible DOM conditions", async () => {
-    history.replaceState(null, "", "/projects?mode=create#details");
+  it("evaluates composable URL, existence, and predicate readiness", async () => {
+    history.replaceState(null, "", "/projects/one");
     document.body.innerHTML = '<main id="project-form"></main>';
-    const matcher = new DomSceneMatcher({ window, document });
+    const waiter = new DomConditionWaiter({ window, document }, 100, 5);
 
     await expect(
-      matcher.matches({
-        id: "create",
-        match: {
-          pathname: "/projects",
-          search: { mode: "create" },
-          hash: "#details",
-          visible: "#project-form",
-        },
-        steps: [],
-      }),
-    ).resolves.toBe(true);
+      waiter.waitFor(
+        all(
+          pathname(/^\/projects\//),
+          exists("#project-form"),
+          ({ document }) => document.querySelector("main") !== null,
+        ),
+      ),
+    ).resolves.toBeUndefined();
   });
 
-  it("waits for input values", async () => {
-    document.body.innerHTML = '<input id="name">';
-    const waiter = new DomConditionWaiter({ window, document }, 100, 5);
-    window.setTimeout(() => {
-      (document.querySelector("#name") as HTMLInputElement).value = "Scenema";
-    }, 5);
+  it("distinguishes existence from visibility", async () => {
+    document.body.innerHTML = '<div id="hidden" style="display:none"></div>';
+    const waiter = new DomConditionWaiter({ window, document }, 10, 1);
 
-    await expect(waiter.waitFor({ value: "Scenema" }, "#name")).resolves.toBeUndefined();
+    await expect(waiter.waitFor(exists("#hidden"))).resolves.toBeUndefined();
+    await expect(waiter.waitFor({ kind: "visible", target: "#hidden" })).rejects.toMatchObject({
+      code: "TARGET_NOT_FOUND",
+    });
+  });
+
+  it("resolves selector, Node, and async function targets", async () => {
+    document.body.innerHTML = '<button id="target">Target</button>';
+    const target = document.querySelector("#target")!;
+
+    await expect(resolveDomTarget(document, "#target")).resolves.toBe(target);
+    await expect(resolveDomTarget(document, target)).resolves.toBe(target);
+    await expect(
+      resolveDomTarget(document, async ({ document }) => document.querySelector("button")),
+    ).resolves.toBe(target);
   });
 
   it("observes History API navigation and restores patched methods", () => {
@@ -90,77 +95,36 @@ describe("DOM runtime primitives", () => {
 });
 
 describe("document-lifetime recovery", () => {
-  it("clears a drifted session after unexpected navigation", async () => {
-    history.replaceState(null, "", "/page-a");
-    const scenario = defineScenario({
-      id: "drift",
-      version: 1,
-      scenes: [
-        {
-          id: "a",
-          match: { pathname: "/page-a" },
-          steps: [{ id: "stay", present: { title: "Stay" } }],
-        },
-      ],
-    });
-    const onError = vi.fn();
-    const runtime = createScenema({
-      scenarios: [scenario],
-      presenter: { present: vi.fn(), dismiss: vi.fn() },
-      actor: { moveTo: vi.fn(), click: vi.fn(), type: vi.fn() },
-      onError,
-    });
-    const session = await runtime.start("drift");
-
-    history.pushState(null, "", "/outside");
-    await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
-
-    expect(runtime.inspect().session).toBeNull();
-    expect(sessionStorage.getItem(ACTIVE_SESSION_KEY)).toBeNull();
-    expect(new LocalStorageSessionStore(localStorage).read(session.id)).toBeNull();
-    runtime.dispose();
-  });
-
-  it("bootstraps a prepared transition in a new runtime", async () => {
+  it("bootstraps a prepared navigation in a new runtime", async () => {
     history.replaceState(null, "", "/page-a");
     document.body.innerHTML = '<button id="next">Next</button>';
     const scenario = defineScenario({
       id: "mpa",
-      version: 1,
-      scenes: [
-        {
-          id: "a",
-          match: { pathname: "/page-a", visible: "#next" },
-          steps: [
-            {
-              id: "leave",
-              target: "#next",
-              present: { title: "Leave" },
-              transition: { trigger: { click: true }, to: "b" },
-            },
-          ],
-        },
-        {
-          id: "b",
-          match: { pathname: "/page-b", visible: "#arrived" },
-          steps: [{ id: "resume", present: { title: "Resumed" } }],
-        },
+      version: 2,
+      steps: [
+        step("leave", (s) => {
+          s.present({ target: "#next", title: "Leave" });
+          s.navigate.click("#next");
+        }),
+        step("resume", { ready: all(pathname("/page-b"), exists("#arrived")) }, (s) => {
+          s.present("Resumed");
+        }),
       ],
     });
-    const firstPresenter: Presenter = { present: vi.fn(), dismiss: vi.fn() };
     const never = new Promise<void>(() => undefined);
     const runtimeA = createScenema({
       scenarios: [scenario],
-      presenter: firstPresenter,
+      presenter: { present: vi.fn(), dismiss: vi.fn() },
       actor: { moveTo: vi.fn(), click: vi.fn(() => never), type: vi.fn() },
     });
     await runtimeA.start("mpa");
     void runtimeA.proceed();
     await vi.waitFor(() => {
       const id = sessionStorage.getItem(ACTIVE_SESSION_KEY)!;
-      expect(new LocalStorageSessionStore(localStorage).read(id)?.transition?.status).toBe(
-        "prepared",
-      );
+      expect(new LocalStorageSessionStore(localStorage).read(id)?.pendingOperation).toMatchObject({
+        kind: "navigate",
+        status: "prepared",
+      });
     });
     runtimeA.dispose();
 
@@ -171,9 +135,9 @@ describe("document-lifetime recovery", () => {
 
     await expect(runtimeB.bootstrap()).resolves.toBe(true);
     expect(runtimeB.inspect()).toMatchObject({
-      currentPhase: "present",
-      currentScene: { id: "b" },
+      status: "presenting",
       currentStep: { id: "resume" },
+      currentOperation: { kind: "present" },
     });
     expect(secondPresenter.present).toHaveBeenCalledOnce();
     runtimeB.stop();

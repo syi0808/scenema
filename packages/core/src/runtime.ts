@@ -1,40 +1,62 @@
 import { ScenemaError } from "./errors.js";
 import type {
   Actor,
+  ClickOperation,
   ConditionWaiter,
+  CursorMoveOperation,
+  Durability,
+  NavigationOperation,
+  Operation,
+  OperationExecutionContext,
+  OperationHandler,
+  PresentOperation,
   Presenter,
+  PressOperation,
+  ResolvedTarget,
   RuntimeInspection,
+  RuntimeStatus,
   ScenarioDefinition,
   ScenarioSession,
-  SceneDefinition,
-  SceneMatcher,
   SessionStore,
   StepDefinition,
   Target,
-  TransitionDefinition,
+  TypeOperation,
+  WaitOperation,
 } from "./types.js";
 
 export interface RuntimeOptions {
   actor: Actor;
   presenter: Presenter;
   sessionStore: SessionStore;
-  sceneMatcher: SceneMatcher;
   conditionWaiter: ConditionWaiter;
+  operationHandlers?: Readonly<Record<string, OperationHandler>>;
+  resolveTarget?: (target: Target) => Promise<ResolvedTarget> | ResolvedTarget;
   createId?: () => string;
   now?: () => number;
   clickDelay?: number;
   cursorMoveDelay?: number;
-  defaultTransitionTimeout?: number;
+  defaultNavigationTimeout?: number;
   onError?: (error: ScenemaError, inspection: RuntimeInspection) => void;
   logger?: (message: string, context?: Record<string, unknown>) => void;
-  onSessionChange?: (session: ScenarioSession) => void;
+  onSessionChange?: (session: ScenarioSession, status: RuntimeStatus) => void;
   onSessionStop?: () => void;
+}
+
+interface OperationLocation {
+  step: StepDefinition;
+  stepIndex: number;
+  operation: Operation;
+  operationIndex: number;
+  address: string;
 }
 
 export class ScenarioRuntime {
   private scenario: ScenarioDefinition | null = null;
   private session: ScenarioSession | null = null;
-  private operation: Promise<void> | null = null;
+  private activeOperation: Promise<void> | null = null;
+  private reconciliation: Promise<void> | null = null;
+  private status: RuntimeStatus = "idle";
+  private readyStepId: string | null = null;
   private readonly createId: () => string;
   private readonly now: () => number;
 
@@ -45,27 +67,26 @@ export class ScenarioRuntime {
 
   async start(scenario: ScenarioDefinition): Promise<ScenarioSession> {
     if (this.session) this.stop();
-    this.scenario = scenario;
-    const scene = await this.findMatchingScene();
-    if (!scene) return this.fail("SCENE_NOT_FOUND", "No scene matches the current document.");
-    const firstStep = scene.steps[0];
-    if (!firstStep) return this.fail("INVALID_SCENARIO", `Scene ${scene.id} has no steps.`);
+    this.activeOperation = null;
+    this.reconciliation = null;
+    const firstStep = scenario.steps[0];
+    if (!firstStep) return this.fail("INVALID_SCENARIO", "A scenario needs at least one step.");
 
-    const timestamp = this.now();
+    this.scenario = scenario;
+    this.readyStepId = null;
+    this.status = "running";
     this.session = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: this.createId(),
       scenarioId: scenario.id,
       scenarioVersion: scenario.version,
-      sceneId: scene.id,
-      stepId: firstStep.id,
-      phase: "enter",
-      completedSteps: [],
+      position: { stepId: firstStep.id, operationIndex: 0 },
+      completedOperations: [],
       revision: 0,
-      updatedAt: timestamp,
+      updatedAt: this.now(),
     };
     this.persist("session started");
-    await this.activateStep(scene, firstStep);
+    await this.drive();
     return this.requireSession();
   }
 
@@ -82,54 +103,67 @@ export class ScenarioRuntime {
 
     this.scenario = scenario;
     this.session = session;
+    this.readyStepId = null;
+    this.status = session.pendingOperation?.kind === "navigate" ? "navigating" : "running";
+    this.requireStep(session.position.stepId);
     this.log("session restored");
-    if (session.phase === "complete") return;
-    if (session.phase === "transition") return this.reconcile();
 
-    const scene = this.requireScene(session.sceneId);
-    const step = this.requireStep(scene, session.stepId);
-    if (!(await this.options.sceneMatcher.matches(scene))) {
-      return this.fail(
-        "SCENE_NOT_FOUND",
-        `Persisted scene ${scene.id} does not match the current document.`,
-      );
+    if (session.pendingOperation) {
+      if (session.pendingOperation.kind === "navigate") {
+        await this.reconcile();
+        return;
+      }
+      if (session.pendingOperation.durability === "at-most-once") {
+        this.completePendingAtMostOnce();
+      }
     }
 
-    if (session.phase === "commit") {
-      await this.verifyAndAdvance(scene, step);
-      return;
-    }
-    if (session.phase === "enter") {
-      await this.activateStep(scene, step);
-      return;
-    }
     await this.restoreCursor();
-    await this.showPresentation(scene, step);
+    await this.drive();
   }
 
   proceed(): Promise<void> {
-    if (this.operation) return this.operation;
-    if (this.session?.phase !== "present") {
+    if (this.activeOperation) return this.activeOperation;
+    const location = this.currentLocation();
+    if (this.status !== "presenting" || !location || location.operation.kind !== "present") {
       return Promise.reject(
         new ScenemaError("INVALID_RUNTIME_STATE", "proceed() is only valid while presenting."),
       );
     }
-    this.operation = this.commitCurrentStep().finally(() => {
-      this.operation = null;
+    const presentation = location.operation as PresentOperation;
+    if ((presentation.advance ?? "user") !== "user") {
+      return Promise.reject(
+        new ScenemaError(
+          "INVALID_RUNTIME_STATE",
+          "The current presentation advances automatically.",
+        ),
+      );
+    }
+
+    const activeOperation = this.proceedFromPresentation(location).finally(() => {
+      if (this.activeOperation === activeOperation) this.activeOperation = null;
     });
-    return this.operation;
+    this.activeOperation = activeOperation;
+    return this.activeOperation;
   }
 
-  async previous(): Promise<void> {
-    const session = this.requireSession();
-    if (session.phase !== "present") {
-      return this.fail("INVALID_RUNTIME_STATE", "previous() is only valid while presenting.");
+  back(): Promise<void> {
+    if (this.activeOperation) return this.activeOperation;
+    if (this.status !== "presenting") {
+      return Promise.reject(
+        new ScenemaError("INVALID_RUNTIME_STATE", "back() is only valid while presenting."),
+      );
     }
-    const scene = this.requireScene(session.sceneId);
-    const currentIndex = scene.steps.findIndex((step) => step.id === session.stepId);
-    if (currentIndex <= 0) return;
-    const previousStep = scene.steps[currentIndex - 1];
-    if (previousStep) await this.activateStep(scene, previousStep);
+    const activeOperation = this.showPreviousPresentation().finally(() => {
+      if (this.activeOperation === activeOperation) this.activeOperation = null;
+    });
+    this.activeOperation = activeOperation;
+    return this.activeOperation;
+  }
+
+  /** @deprecated Use back(). */
+  previous(): Promise<void> {
+    return this.back();
   }
 
   stop(): void {
@@ -140,220 +174,533 @@ export class ScenarioRuntime {
     }
     this.session = null;
     this.scenario = null;
+    this.activeOperation = null;
+    this.reconciliation = null;
+    this.readyStepId = null;
+    this.status = "idle";
     this.log("session stopped");
   }
 
-  async reconcile(): Promise<void> {
-    const session = this.requireSession();
-    const transition = session.transition;
-    if (session.phase !== "transition" || !transition) {
-      const scene = this.requireScene(session.sceneId);
-      if (!(await this.options.sceneMatcher.matches(scene))) {
-        return this.abort(
-          "SCENE_NOT_FOUND",
-          `Scene ${scene.id} no longer matches the current document.`,
-        );
-      }
-      return;
-    }
+  reconcile(): Promise<void> {
+    if (this.reconciliation) return this.reconciliation;
+    const reconciliation = this.reconcileNavigation().finally(() => {
+      if (this.reconciliation === reconciliation) this.reconciliation = null;
+    });
+    this.reconciliation = reconciliation;
+    return this.reconciliation;
+  }
 
-    if (this.now() - transition.startedAt >= transition.timeout) {
-      return this.fail("TRANSITION_TIMEOUT", `Transition to ${transition.toScene} timed out.`, {
-        transition,
+  private async reconcileNavigation(): Promise<void> {
+    const session = this.requireSession();
+    const pending = session.pendingOperation;
+    if (!pending || pending.kind !== "navigate") return;
+    if (pending.timeout !== undefined && this.now() - pending.startedAt >= pending.timeout) {
+      return this.fail("NAVIGATION_TIMEOUT", "Navigation did not reach the next step in time.", {
+        pendingOperation: pending,
       });
     }
 
-    const destination = this.requireScene(transition.toScene);
-    if (!(await this.options.sceneMatcher.matches(destination))) {
-      this.log("transition pending", { toScene: destination.id });
-      return;
+    this.status = "navigating";
+    if (this.currentAddress() === pending.address) {
+      this.addCompleted(pending.address);
+      this.advancePosition();
+      pending.status = "performed";
+      this.persist("navigation performed");
     }
 
-    transition.status = "arrived";
-    this.persist("transition arrived");
-    const firstStep = destination.steps[0];
-    if (!firstStep) return this.fail("INVALID_SCENARIO", `Scene ${destination.id} has no steps.`);
-    await this.activateStep(destination, firstStep, true);
+    const step = this.currentStep();
+    if (!step) {
+      delete session.pendingOperation;
+      this.completeScenario();
+      return;
+    }
+    if (step.ready) {
+      const remaining =
+        pending.timeout === undefined
+          ? undefined
+          : Math.max(0, pending.startedAt + pending.timeout - this.now());
+      try {
+        await this.options.conditionWaiter.waitFor(
+          step.ready,
+          remaining === undefined ? undefined : { timeout: remaining },
+        );
+      } catch (error) {
+        if (error instanceof ScenemaError && error.code === "TARGET_NOT_FOUND") {
+          return this.fail(
+            "NAVIGATION_TIMEOUT",
+            "Navigation did not satisfy the next step readiness in time.",
+            { pendingOperation: pending, cause: error },
+          );
+        }
+        throw error;
+      }
+      if (this.session !== session) return;
+    }
+    this.readyStepId = step.id;
+    delete session.pendingOperation;
+    this.status = "running";
+    this.persist("navigation reconciled");
+    await this.drive();
   }
 
   inspect(): RuntimeInspection {
     const session = this.session;
-    const scene =
-      session && this.scenario
-        ? this.scenario.scenes.find(({ id }) => id === session.sceneId)
-        : undefined;
-    const step = scene?.steps.find(({ id }) => id === session?.stepId);
+    const currentStep = session && this.scenario ? this.findStep(session.position.stepId) : null;
+    const currentOperation =
+      currentStep?.operations[session?.position.operationIndex ?? -1] ?? null;
     return {
       session: session ? structuredClone(session) : null,
-      currentScene: scene ?? null,
-      currentStep: step ?? null,
-      currentPhase: session?.phase ?? "idle",
-      pendingTransition: session?.transition ? structuredClone(session.transition) : null,
+      currentStep,
+      currentOperation,
+      status: this.status,
+      pendingOperation: session?.pendingOperation
+        ? structuredClone(session.pendingOperation)
+        : null,
     };
   }
 
-  private async activateStep(
-    scene: SceneDefinition,
-    step: StepDefinition,
-    delayCursorMove = false,
-  ): Promise<void> {
+  private async drive(): Promise<void> {
     const session = this.requireSession();
-    this.options.presenter.dismiss();
-    session.sceneId = scene.id;
-    session.stepId = step.id;
-    session.phase = "enter";
-    delete session.transition;
-
-    let cursorTarget: Target | undefined;
-    if (step.enter) {
-      cursorTarget =
-        step.enter.cursor === "move" ? this.requireTarget(step) : step.enter.cursor.moveTo;
-      session.cursorTarget = cursorTarget;
+    if (session.pendingOperation?.kind === "navigate") {
+      await this.reconcile();
+      return;
     }
-    this.persist("step enter");
-    if (cursorTarget) {
-      if (delayCursorMove) await this.wait(this.options.cursorMoveDelay);
-      await this.options.actor.moveTo(cursorTarget);
-    }
-    await this.showPresentation(scene, step);
-  }
+    this.status = "running";
 
-  private async restoreCursor(): Promise<void> {
-    const target = this.requireSession().cursorTarget;
-    if (target && this.options.actor.restoreCursor) {
-      try {
-        await this.options.actor.restoreCursor(target);
-      } catch (error) {
-        this.log("cursor restore skipped", {
-          target,
-          error: error instanceof Error ? error.message : String(error),
-        });
+    while (this.session === session) {
+      const step = this.currentStep();
+      if (!step) {
+        this.completeScenario();
+        return;
       }
+      if (this.readyStepId !== step.id) {
+        if (step.ready) await this.options.conditionWaiter.waitFor(step.ready);
+        if (this.session !== session) return;
+        this.readyStepId = step.id;
+      }
+
+      const location = this.currentLocation();
+      if (!location) {
+        if (!this.advancePosition()) {
+          this.completeScenario();
+          return;
+        }
+        continue;
+      }
+
+      if (session.completedOperations.includes(location.address)) {
+        this.advancePosition();
+        continue;
+      }
+
+      if (location.operation.kind === "present") {
+        const presentation = location.operation as PresentOperation;
+        await this.showPresentation(location, presentation);
+        if (this.session !== session) return;
+        if ((presentation.advance ?? "user") === "user") return;
+        this.options.presenter.dismiss();
+        this.completeCurrent(location.address, "automatic presentation completed");
+        continue;
+      }
+
+      await this.executeOperation(location);
+      if (location.operation.kind === "navigate") return;
     }
   }
 
-  private async showPresentation(scene: SceneDefinition, step: StepDefinition): Promise<void> {
-    const session = this.requireSession();
-    session.phase = "present";
-    this.persist("step presenting");
-    if (!step.present) return;
-    const index = scene.steps.findIndex(({ id }) => id === step.id);
-    const allSteps = this.requireScenario().scenes.flatMap((candidateScene) =>
-      candidateScene.steps.map((candidateStep) => ({ scene: candidateScene, step: candidateStep })),
+  private async executeOperation(location: OperationLocation): Promise<void> {
+    const { operation, address } = location;
+    switch (operation.kind) {
+      case "cursor.move": {
+        const sessionId = this.requireSession().id;
+        const cursor = operation as CursorMoveOperation;
+        await this.wait(cursor.options?.delay ?? this.options.cursorMoveDelay);
+        await this.options.actor.moveTo(await this.resolveTarget(cursor.target), cursor.options);
+        if (!this.isCurrent(sessionId, address)) return;
+        this.completeCurrent(address, "cursor moved");
+        return;
+      }
+      case "click": {
+        const click = operation as ClickOperation;
+        await this.executeAtMostOnce(location, async () => {
+          await this.wait(click.options?.delay ?? this.options.clickDelay);
+          await this.options.actor.click(await this.resolveTarget(click.target), click.options);
+        });
+        return;
+      }
+      case "type": {
+        const sessionId = this.requireSession().id;
+        const type = operation as TypeOperation;
+        await this.options.actor.type(
+          await this.resolveTarget(type.target),
+          type.value,
+          type.options,
+        );
+        if (!this.isCurrent(sessionId, address)) return;
+        this.completeCurrent(address, "value typed");
+        return;
+      }
+      case "press": {
+        const press = operation as PressOperation;
+        if (!this.options.actor.press) {
+          return this.fail("TARGET_CAPABILITY_MISMATCH", "The configured actor cannot press keys.");
+        }
+        await this.executeAtMostOnce(location, async () => {
+          await this.wait(press.options?.delay);
+          await this.options.actor.press!(press.key, press.options);
+        });
+        return;
+      }
+      case "wait": {
+        const sessionId = this.requireSession().id;
+        const wait = operation as WaitOperation;
+        await this.options.conditionWaiter.waitFor(
+          wait.condition,
+          wait.timeout === undefined ? undefined : { timeout: wait.timeout },
+        );
+        if (!this.isCurrent(sessionId, address)) return;
+        this.completeCurrent(address, "condition satisfied");
+        return;
+      }
+      case "navigate": {
+        await this.executeNavigation(location, operation as NavigationOperation);
+        return;
+      }
+      default:
+        await this.executeCustom(location);
+    }
+  }
+
+  private async executeAtMostOnce(
+    location: OperationLocation,
+    perform: () => Promise<void>,
+  ): Promise<void> {
+    const sessionId = this.requireSession().id;
+    this.preparePending(location, "at-most-once");
+    await perform();
+    if (!this.isCurrent(sessionId, location.address)) return;
+    this.completeCurrent(location.address, `${location.operation.kind} completed`);
+  }
+
+  private async executeNavigation(
+    location: OperationLocation,
+    navigation: NavigationOperation,
+  ): Promise<void> {
+    const sessionId = this.requireSession().id;
+    const timeout = navigation.timeout ?? this.options.defaultNavigationTimeout ?? 15_000;
+    this.preparePending(location, "reconcile", timeout);
+    this.status = "navigating";
+    const action = navigation.action;
+    if (action.kind === "click") {
+      await this.wait(action.options?.delay ?? this.options.clickDelay);
+      await this.options.actor.click(await this.resolveTarget(action.target), action.options);
+    } else {
+      if (!this.options.actor.press) {
+        return this.fail("TARGET_CAPABILITY_MISMATCH", "The configured actor cannot press keys.");
+      }
+      await this.wait(action.options?.delay);
+      await this.options.actor.press(action.key, action.options);
+    }
+    if (
+      !this.isCurrent(sessionId, location.address) ||
+      this.session?.pendingOperation?.address !== location.address
+    )
+      return;
+    await this.reconcile();
+  }
+
+  private async executeCustom(location: OperationLocation): Promise<void> {
+    const sessionId = this.requireSession().id;
+    const handler = this.options.operationHandlers?.[location.operation.kind];
+    if (!handler) {
+      return this.fail(
+        "OPERATION_NOT_FOUND",
+        `No operation handler is registered for ${location.operation.kind}.`,
+      );
+    }
+    const durability = handler.durability ?? "replay-safe";
+    if (durability !== "replay-safe") this.preparePending(location, durability);
+    await handler.execute(location.operation, this.executionContext(location));
+    if (!this.isCurrent(sessionId, location.address)) return;
+    this.completeCurrent(location.address, `${location.operation.kind} completed`);
+  }
+
+  private executionContext(location: OperationLocation): OperationExecutionContext {
+    return {
+      scenario: this.requireScenario(),
+      step: location.step,
+      session: this.requireSession(),
+      address: location.address,
+      actor: this.options.actor,
+      waitFor: (condition, options) => this.options.conditionWaiter.waitFor(condition, options),
+      resolveTarget: (target) => this.resolveTarget(target),
+    };
+  }
+
+  private async showPresentation(
+    location: OperationLocation,
+    presentation: PresentOperation,
+  ): Promise<void> {
+    const sessionId = this.requireSession().id;
+    const checkpoints = this.presentationCheckpoints();
+    const progressIndex = checkpoints.findIndex(({ address }) => address === location.address);
+    const stepPresentations = location.step.operations.filter(
+      (operation) => operation.kind === "present",
     );
-    const scenarioIndex = allSteps.findIndex(
-      (candidate) => candidate.scene.id === scene.id && candidate.step.id === step.id,
-    );
-    await this.options.presenter.present(step.present, {
-      sceneId: scene.id,
-      stepId: step.id,
-      stepNumber: scenarioIndex + 1,
-      totalSteps: allSteps.length,
-      canPrevious: index > 0,
-      interaction: step.commit || step.transition ? "locked" : "passthrough",
-      ...(step.target ? { target: step.target } : {}),
+    const presentationIndex = stepPresentations.indexOf(presentation);
+    const interaction = this.resolveInteraction(location, presentation);
+    const target =
+      presentation.target === undefined ? undefined : await this.resolveTarget(presentation.target);
+    if (!this.isCurrent(sessionId, location.address)) return;
+    this.status = "presenting";
+    this.persist("presentation checkpoint");
+    await this.options.presenter.present(presentation.content, {
+      scenarioId: this.requireScenario().id,
+      step: { id: location.step.id, index: location.stepIndex },
+      presentation: { index: presentationIndex },
+      progress: {
+        current: progressIndex < 0 ? 0 : progressIndex + 1,
+        total: checkpoints.length,
+      },
+      ...(target === undefined ? {} : { target }),
+      canBack: this.previousCheckpoint(location.address) !== null,
+      interaction,
+      ...(presentation.placement === undefined ? {} : { placement: presentation.placement }),
       controls: {
-        proceed: () => {
-          const operation = this.operation;
-          if (operation) void operation.then(() => this.proceed());
-          else void this.proceed();
-        },
-        previous: () => void this.previous(),
+        proceed: () => void this.proceed(),
+        back: () => void this.back(),
         stop: () => this.stop(),
       },
     });
   }
 
-  private async commitCurrentStep(): Promise<void> {
-    const session = this.requireSession();
-    const scene = this.requireScene(session.sceneId);
-    const step = this.requireStep(scene, session.stepId);
+  private resolveInteraction(
+    location: OperationLocation,
+    presentation: PresentOperation,
+  ): "locked" | "passthrough" {
+    if (presentation.interaction === "locked" || presentation.interaction === "passthrough") {
+      return presentation.interaction;
+    }
+    const remaining = location.step.operations.slice(location.operationIndex + 1);
+    const beforeNextPresentation = remaining.slice(
+      0,
+      remaining.findIndex((operation) => operation.kind === "present") < 0
+        ? remaining.length
+        : remaining.findIndex((operation) => operation.kind === "present"),
+    );
+    return beforeNextPresentation.some((operation) =>
+      ["click", "type", "press", "navigate"].includes(operation.kind),
+    )
+      ? "locked"
+      : "passthrough";
+  }
+
+  private async proceedFromPresentation(location: OperationLocation): Promise<void> {
     this.options.presenter.dismiss();
-    session.phase = "commit";
-    this.persist("step committing");
-
-    if (step.transition) {
-      await this.performTransition(scene, step, step.transition);
-      return;
-    }
-    const stepKey = `${scene.id}/${step.id}`;
-    let actionPerformed = false;
-    if (step.commit && !session.completedSteps?.includes(stepKey)) {
-      await this.performCommit(step);
-      actionPerformed = true;
-      session.completedSteps = [...(session.completedSteps ?? []), stepKey];
-      this.persist("step committed");
-    }
-    await this.verifyAndAdvance(scene, step, actionPerformed);
+    this.status = "running";
+    this.completeCurrent(location.address, "presentation proceeded");
+    await this.drive();
   }
 
-  private async performCommit(step: StepDefinition): Promise<void> {
-    const commit = step.commit;
-    if (!commit) return;
-    if ("click" in commit) {
-      await this.click(commit.click === true ? this.requireTarget(step) : commit.click);
-    } else {
-      await this.options.actor.type(
-        commit.type.target ?? this.requireTarget(step),
-        commit.type.value,
-      );
-    }
-  }
-
-  private async performTransition(
-    scene: SceneDefinition,
-    step: StepDefinition,
-    transition: TransitionDefinition,
-  ): Promise<void> {
+  private async showPreviousPresentation(): Promise<void> {
+    const address = this.currentAddress();
+    if (!address) return;
+    const previous = this.previousCheckpoint(address);
+    if (!previous) return;
+    this.options.presenter.dismiss();
     const session = this.requireSession();
-    const target =
-      transition.trigger.click === true ? this.requireTarget(step) : transition.trigger.click;
-    session.phase = "transition";
-    session.transition = {
-      id: transition.id ?? `${scene.id}:${step.id}->${transition.to}`,
-      fromScene: scene.id,
-      fromStep: step.id,
-      toScene: transition.to,
+    session.position = {
+      stepId: previous.step.id,
+      operationIndex: previous.operationIndex,
+    };
+    this.readyStepId = previous.step.id;
+    this.persist("presentation moved back");
+    await this.showPresentation(previous, previous.operation as PresentOperation);
+  }
+
+  private previousCheckpoint(address: string): OperationLocation | null {
+    const checkpoints = this.presentationCheckpoints();
+    const index = checkpoints.findIndex((candidate) => candidate.address === address);
+    return index > 0 ? checkpoints[index - 1]! : null;
+  }
+
+  private presentationCheckpoints(): OperationLocation[] {
+    const result: OperationLocation[] = [];
+    this.requireScenario().steps.forEach((step, stepIndex) => {
+      step.operations.forEach((operation, operationIndex) => {
+        if (operation.kind !== "present") return;
+        const presentation = operation as PresentOperation;
+        if ((presentation.advance ?? "user") === "auto") return;
+        result.push({
+          step,
+          stepIndex,
+          operation,
+          operationIndex,
+          address: this.address(step.id, operationIndex),
+        });
+      });
+    });
+    return result;
+  }
+
+  private preparePending(
+    location: OperationLocation,
+    durability: Durability,
+    timeout?: number,
+  ): void {
+    const session = this.requireSession();
+    session.pendingOperation = {
+      address: location.address,
+      kind: location.operation.kind,
+      durability,
       status: "prepared",
       startedAt: this.now(),
-      timeout: transition.timeout ?? this.options.defaultTransitionTimeout ?? 15_000,
+      ...(timeout === undefined ? {} : { timeout }),
     };
-    this.persist("transition prepared");
-    await this.click(target);
-    if (
-      !this.session ||
-      this.session.id !== session.id ||
-      session.phase !== "transition" ||
-      !session.transition
-    )
-      return;
-    session.transition.status = "triggered";
-    this.persist("transition triggered");
-    await this.reconcile();
+    this.persist(`${location.operation.kind} prepared`);
   }
 
-  private async verifyAndAdvance(
-    scene: SceneDefinition,
-    step: StepDefinition,
-    delayCursorMove = false,
-  ): Promise<void> {
-    if (step.exit) await this.options.conditionWaiter.waitFor(step.exit.until, step.target);
-    const index = scene.steps.findIndex(({ id }) => id === step.id);
-    const nextStep = scene.steps[index + 1];
-    if (nextStep) {
-      await this.activateStep(scene, nextStep, delayCursorMove);
-      return;
-    }
+  private completePendingAtMostOnce(): void {
     const session = this.requireSession();
-    session.phase = "complete";
-    delete session.transition;
-    this.persist("scenario complete");
-    this.options.presenter.dismiss();
+    const pending = session.pendingOperation;
+    if (!pending) return;
+    this.addCompleted(pending.address);
+    if (this.currentAddress() === pending.address) this.advancePosition();
+    delete session.pendingOperation;
+    this.persist("at-most-once operation recovered");
   }
 
-  private async click(target: Target): Promise<void> {
-    await this.wait(this.options.clickDelay);
-    await this.options.actor.click(target);
+  private completeCurrent(address: string, message: string): void {
+    const session = this.requireSession();
+    this.addCompleted(address);
+    delete session.pendingOperation;
+    this.advancePosition();
+    this.persist(message);
+  }
+
+  private addCompleted(address: string): void {
+    const completed = this.requireSession().completedOperations;
+    if (!completed.includes(address)) completed.push(address);
+  }
+
+  private advancePosition(): boolean {
+    const session = this.requireSession();
+    const step = this.requireStep(session.position.stepId);
+    const nextOperationIndex = session.position.operationIndex + 1;
+    if (nextOperationIndex < step.operations.length) {
+      session.position.operationIndex = nextOperationIndex;
+      return true;
+    }
+    const stepIndex = this.requireScenario().steps.indexOf(step);
+    const nextStep = this.requireScenario().steps[stepIndex + 1];
+    if (!nextStep) {
+      session.position.operationIndex = step.operations.length;
+      return false;
+    }
+    session.position = { stepId: nextStep.id, operationIndex: 0 };
+    this.readyStepId = null;
+    return true;
+  }
+
+  private completeScenario(): void {
+    const session = this.requireSession();
+    delete session.pendingOperation;
+    this.status = "complete";
+    this.options.presenter.dismiss();
+    this.persist("scenario complete");
+  }
+
+  private async restoreCursor(): Promise<void> {
+    if (!this.options.actor.restoreCursor) return;
+    const currentOrder = this.operationOrder(this.requireSession().position);
+    const cursor = this.allLocations()
+      .slice(0, currentOrder)
+      .reverse()
+      .find(
+        (location) =>
+          location.operation.kind === "cursor.move" &&
+          this.requireSession().completedOperations.includes(location.address),
+      );
+    if (!cursor) return;
+    try {
+      await this.options.actor.restoreCursor(
+        await this.resolveTarget((cursor.operation as CursorMoveOperation).target),
+      );
+    } catch (error) {
+      this.log("cursor restore skipped", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private allLocations(): OperationLocation[] {
+    const result: OperationLocation[] = [];
+    this.requireScenario().steps.forEach((step, stepIndex) => {
+      step.operations.forEach((operation, operationIndex) => {
+        result.push({
+          step,
+          stepIndex,
+          operation,
+          operationIndex,
+          address: this.address(step.id, operationIndex),
+        });
+      });
+    });
+    return result;
+  }
+
+  private operationOrder(position: ScenarioSession["position"]): number {
+    const locations = this.allLocations();
+    const index = locations.findIndex(
+      ({ step, operationIndex }) =>
+        step.id === position.stepId && operationIndex === position.operationIndex,
+    );
+    return index < 0 ? locations.length : index;
+  }
+
+  private currentLocation(): OperationLocation | null {
+    const session = this.requireSession();
+    const step = this.requireStep(session.position.stepId);
+    const operation = step.operations[session.position.operationIndex];
+    if (!operation) return null;
+    return {
+      step,
+      stepIndex: this.requireScenario().steps.indexOf(step),
+      operation,
+      operationIndex: session.position.operationIndex,
+      address: this.address(step.id, session.position.operationIndex),
+    };
+  }
+
+  private currentStep(): StepDefinition | null {
+    if (!this.session) return null;
+    return this.findStep(this.session.position.stepId);
+  }
+
+  private currentAddress(): string | null {
+    const session = this.requireSession();
+    const step = this.findStep(session.position.stepId);
+    if (!step || !step.operations[session.position.operationIndex]) return null;
+    return this.address(step.id, session.position.operationIndex);
+  }
+
+  private isCurrent(sessionId: string, address: string): boolean {
+    return this.session?.id === sessionId && this.currentAddress() === address;
+  }
+
+  private address(stepId: string, operationIndex: number): string {
+    return `${stepId}/${operationIndex}`;
+  }
+
+  private async resolveTarget(target: Target): Promise<ResolvedTarget> {
+    if (this.options.resolveTarget) return this.options.resolveTarget(target);
+    if (typeof target === "function") {
+      return this.fail(
+        "TARGET_NOT_FOUND",
+        "A target resolver requires a runtime target resolution environment.",
+      );
+    }
+    return target;
   }
 
   private async wait(delay: number | undefined): Promise<void> {
@@ -367,17 +714,14 @@ export class ScenarioRuntime {
     const session = this.requireSession();
     session.revision += 1;
     session.updatedAt = this.now();
-    this.options.sessionStore.write(structuredClone(session));
-    this.options.onSessionChange?.(structuredClone(session));
-    this.log(message, { sceneId: session.sceneId, stepId: session.stepId, phase: session.phase });
-  }
-
-  private async findMatchingScene(): Promise<SceneDefinition | null> {
-    const scenario = this.requireScenario();
-    for (const scene of scenario.scenes) {
-      if (await this.options.sceneMatcher.matches(scene)) return scene;
-    }
-    return null;
+    const copy = structuredClone(session);
+    this.options.sessionStore.write(copy);
+    this.options.onSessionChange?.(structuredClone(session), this.status);
+    this.log(message, {
+      stepId: session.position.stepId,
+      operationIndex: session.position.operationIndex,
+      status: this.status,
+    });
   }
 
   private requireScenario(): ScenarioDefinition {
@@ -386,31 +730,22 @@ export class ScenarioRuntime {
   }
 
   private requireSession(): ScenarioSession {
-    if (!this.session)
+    if (!this.session) {
       throw new ScenemaError("INVALID_RUNTIME_STATE", "No scenario session is active.");
+    }
     return this.session;
   }
 
-  private requireScene(id: string): SceneDefinition {
-    const scene = this.requireScenario().scenes.find((candidate) => candidate.id === id);
-    if (!scene)
-      throw new ScenemaError("INVALID_SESSION_STATE", `Session references unknown scene ${id}.`);
-    return scene;
+  private findStep(id: string): StepDefinition | null {
+    return this.scenario?.steps.find((candidate) => candidate.id === id) ?? null;
   }
 
-  private requireStep(scene: SceneDefinition, id: string): StepDefinition {
-    const step = scene.steps.find((candidate) => candidate.id === id);
-    if (!step)
-      throw new ScenemaError(
-        "INVALID_SESSION_STATE",
-        `Session references unknown step ${scene.id}/${id}.`,
-      );
+  private requireStep(id: string): StepDefinition {
+    const step = this.findStep(id);
+    if (!step) {
+      throw new ScenemaError("INVALID_SESSION_STATE", `Session references unknown step ${id}.`);
+    }
     return step;
-  }
-
-  private requireTarget(step: StepDefinition): Target {
-    if (!step.target) throw new ScenemaError("TARGET_NOT_FOUND", `Step ${step.id} has no target.`);
-    return step.target;
   }
 
   private fail(
@@ -420,14 +755,6 @@ export class ScenarioRuntime {
   ): never {
     const error = new ScenemaError(code, message, context);
     this.options.onError?.(error, this.inspect());
-    throw error;
-  }
-
-  private abort(code: ScenemaError["code"], message: string): never {
-    const error = new ScenemaError(code, message);
-    const inspection = this.inspect();
-    this.stop();
-    this.options.onError?.(error, inspection);
     throw error;
   }
 

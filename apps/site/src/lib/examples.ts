@@ -26,16 +26,16 @@ export const codeExamples: readonly CodeExampleDefinition[] = [
     filename: "onboarding.ts",
     code: `const onboarding = defineScenario({
   id: "onboarding",
-  version: 1,
-  scenes: [{
-    id: "projects",
-    match: { pathname: "/projects" },
-    steps: [{
-      id: "create-project",
-      target: "#create-project",
-      present: { title: "Create a project" }
-    }]
-  }]
+  version: 2,
+  steps: [
+    step("create-project", (s) => {
+      s.cursor.move("#create-project");
+      s.present({
+        target: "#create-project",
+        title: "Create a project"
+      });
+    })
+  ]
 });
 
 const scenema = createScenema({
@@ -50,50 +50,46 @@ await scenema.start(onboarding);`,
     label: "DOM action",
     filename: "actions.ts",
     code: `steps: [
-  {
-    id: "create-project",
-    target: "#create-project",
-    present: { title: "Create a project" },
-    commit: { click: true }
-  },
-  {
-    id: "project-name",
-    target: "#project-name",
-    present: { title: "Name the project" },
-    commit: {
-      type: { value: "Launch workspace" }
-    },
-    exit: {
-      until: { value: "Launch workspace" }
-    }
-  }
+  step("create-project", (s) => {
+    s.present({
+      target: "#create-project",
+      title: "Create a project"
+    });
+    s.click("#create-project");
+  }),
+  step("project-name", (s) => {
+    s.present({
+      target: "#project-name",
+      title: "Name the project"
+    });
+    s.type("#project-name", "Launch workspace");
+    s.waitFor.value("#project-name", "Launch workspace");
+  })
 ]`,
   },
   {
     id: "navigation",
     label: "Navigation",
     filename: "navigation.ts",
-    code: `scenes: [
-  {
-    id: "projects",
-    match: { pathname: "/projects" },
-    steps: [{
-      id: "open-project",
+    code: `steps: [
+  step("open-project", (s) => {
+    s.present({
       target: "#project-link",
-      transition: {
-        trigger: { click: true },
-        to: "project-detail"
-      }
-    }]
-  },
-  {
-    id: "project-detail",
-    match: {
-      pathname: "/projects/launch",
-      visible: "#project-detail"
-    },
-    steps: [/* the same scenario continues */]
-  }
+      title: "Open the project"
+    });
+    s.navigate.click("#project-link");
+  }),
+  step("project-detail", {
+    ready: all(
+      pathname("/projects/launch"),
+      visible("#project-detail")
+    )
+  }, (s) => {
+    s.present({
+      target: "#project-detail",
+      title: "Project detail"
+    });
+  })
 ]`,
   },
 ];

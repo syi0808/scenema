@@ -4,8 +4,11 @@
     createScenema,
     createScenemaActorble,
     defineScenario,
+    exists,
+    step,
     type Actor,
     type Presenter,
+    type ResolvedTarget,
     type Scenema,
   } from "scenema";
   import { onMount, tick } from "svelte";
@@ -24,102 +27,76 @@
     isolated?: boolean;
   } = $props();
 
-  const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
   const pageTour = defineScenario({
     id: "landing-page-tour",
     version: 1,
-    scenes: [
-      {
-        id: "landing",
-        match: { pathname: sitePath("/"), visible: "#hero-copy" },
-        steps: [
-          {
-            id: "first-action",
-            target: "#code-tab-dom-action",
-            present: {
+    steps: [
+      step("first-action", { ready: exists("#hero-copy") }, (s) => {
+        s.present({
+          target: "#code-tab-dom-action",
               title: "Click a real control",
               description: "Continue and Scenema will select the DOM action example.",
-            },
-            commit: { click: true },
-          },
-          {
-            id: "next-action",
-            target: "#code-tab-navigation",
-            present: {
+        });
+        s.click("#code-tab-dom-action");
+      }),
+      step("next-action", (s) => {
+        s.present({
+          target: "#code-tab-navigation",
               title: "Continue with another action",
               description: "Scenema moves to the next target and selects Navigation.",
-            },
-            commit: { click: true },
-          },
-          {
-            id: "result",
-            target: "#scenario-code-panel",
-            present: {
+        });
+        s.click("#code-tab-navigation");
+      }),
+      step("result", (s) => {
+        s.present({
+          target: "#scenario-code-panel",
               title: "The page responded",
               description: "The code panel now shows the scenario for the selected action.",
-            },
-          },
-          {
-            id: "start",
-            target: "#getting-started-actions",
-            present: {
+        });
+      }),
+      step("start", (s) => {
+        s.present({
+          target: "#getting-started-actions",
               title: "Start with one scenario",
               description: "The repository contains the runtime, presenter, and this live example.",
-            },
-          },
-        ],
-      },
+        });
+      }),
     ],
   });
 
   const singleHighlight = defineScenario({
     id: "landing-single-highlight",
     version: 1,
-    scenes: [
-      {
-        id: "landing",
-        match: { pathname: sitePath("/"), visible: "#getting-started-actions" },
-        steps: [
-          {
-            id: "highlight",
-            target: "#getting-started-actions",
-            present: {
+    steps: [
+      step("highlight", { ready: exists("#getting-started-actions") }, (s) => {
+        s.present({
+          target: "#getting-started-actions",
               title: "Start from the repository",
               description: "A single step can focus any stable element on the page.",
-            },
-          },
-        ],
-      },
+        });
+      }),
     ],
   });
 
   const domAction = defineScenario({
     id: "landing-dom-action",
     version: 1,
-    scenes: [
-      {
-        id: "landing",
-        match: { pathname: sitePath("/"), visible: "#code-tab-dom-action" },
-        steps: [
-          {
-            id: "click-tab",
-            target: "#code-tab-dom-action",
-            present: {
+    steps: [
+      step("click-tab", { ready: exists("#code-tab-dom-action") }, (s) => {
+        s.present({
+          target: "#code-tab-dom-action",
               title: "Click a real control",
               description: "Continue and Scenema will select the DOM action example.",
-            },
-            commit: { click: true },
-          },
-          {
-            id: "show-result",
-            target: "#scenario-code-panel",
-            present: {
+        });
+        s.click("#code-tab-dom-action");
+      }),
+      step("show-result", (s) => {
+        s.present({
+          target: "#scenario-code-panel",
               title: "The interface responded",
               description: "The same action can target controls inside your product.",
-            },
-          },
-        ],
-      },
+        });
+      }),
     ],
   });
 
@@ -150,7 +127,7 @@
     });
     const presenter: Presenter = {
       async present(presentation, context) {
-        const target = document.querySelector(context.target ?? "#hero-copy");
+        const target = toElement(context.target) ?? document.querySelector("#hero-copy");
         if (target) await scrollTargetIntoView(target, reduceMotion);
         await tick();
         await tourPresenter.present(presentation, context);
@@ -164,16 +141,16 @@
     };
     const actor: Actor = {
       moveTo(target) {
-        return acquireActorble().moveTo(resolveTarget(target));
+        return acquireActorble().moveTo(toActorTarget(target));
       },
       restoreCursor(target) {
-        return acquireActorble().moveTo(resolveTarget(target), { duration: 0 });
+        return acquireActorble().moveTo(toActorTarget(target), { duration: 0 });
       },
       click(target) {
-        return acquireActorble().click(resolveTarget(target));
+        return acquireActorble().click(toActorTarget(target));
       },
       type(target, value) {
-        return acquireActorble().typeInto(resolveTarget(target), value);
+        return acquireActorble().typeInto(toActorTarget(target), value);
       },
     };
 
@@ -257,8 +234,8 @@
 
     try {
       await director.click(resolveTarget("#start-tour"), { force: true });
-      for (let step = 1; step <= pageTour.scenes[0].steps.length; step += 1) {
-        const next = await waitForTourControl(step, pageTour.scenes[0].steps.length);
+      for (let step = 1; step <= pageTour.steps.length; step += 1) {
+        const next = await waitForTourControl(step, pageTour.steps.length);
         await pause(reduceMotion ? 200 : 1_100);
         await director.click(next, { force: true });
       }
@@ -271,15 +248,22 @@
     }
   }
 
-  function sitePath(path: string): string {
-    if (!basePrefix) return path;
-    return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
-  }
-
   function resolveTarget(selector: string): Element {
     const target = document.querySelector(selector);
     if (!target) throw new Error(`The demo target was not found: ${selector}`);
     return target;
+  }
+
+  function toElement(target: ResolvedTarget | undefined): Element | null {
+    if (target === undefined) return null;
+    if (typeof target === "string") return document.querySelector(target);
+    return target.nodeType === 1 ? (target as Element) : target.parentElement;
+  }
+
+  function toActorTarget(target: ResolvedTarget): Element {
+    const element = toElement(target);
+    if (!element) throw new Error("The demo target is not an element.");
+    return element;
   }
 
   async function waitForTourControl(step: number, total: number): Promise<HTMLButtonElement> {

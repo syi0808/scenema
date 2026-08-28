@@ -1,8 +1,8 @@
 import { ScenemaError } from "./errors.js";
-import type { ScenarioSession, SessionPhase, TransitionStatus } from "./types.js";
+import type { Durability, PendingOperationStatus, ScenarioSession } from "./types.js";
 
-const phases: readonly SessionPhase[] = ["enter", "present", "commit", "transition", "complete"];
-const transitionStatuses: readonly TransitionStatus[] = ["prepared", "triggered", "arrived"];
+const durabilities: readonly Durability[] = ["replay-safe", "at-most-once", "reconcile"];
+const pendingStatuses: readonly PendingOperationStatus[] = ["prepared", "performed"];
 
 export function serializeSession(session: ScenarioSession): string {
   return JSON.stringify(session);
@@ -16,42 +16,39 @@ export function deserializeSession(serialized: string): ScenarioSession {
     throw invalidSession("Session is not valid JSON.", cause);
   }
 
-  if (!isRecord(value)) throw invalidSession("Session must be an object.");
+  if (!isRecord(value) || !isRecord(value.position)) {
+    throw invalidSession("Session must be an object with a position.");
+  }
   if (
-    value.schemaVersion !== 1 ||
+    value.schemaVersion !== 2 ||
     !isString(value.id) ||
     !isString(value.scenarioId) ||
     !isPositiveInteger(value.scenarioVersion) ||
-    !isString(value.sceneId) ||
-    !isString(value.stepId) ||
-    !phases.includes(value.phase as SessionPhase) ||
-    (value.cursorTarget !== undefined && !isString(value.cursorTarget)) ||
-    (value.completedSteps !== undefined &&
-      (!Array.isArray(value.completedSteps) || !value.completedSteps.every(isString))) ||
+    !isString(value.position.stepId) ||
+    !isNonNegativeInteger(value.position.operationIndex) ||
+    !Array.isArray(value.completedOperations) ||
+    !value.completedOperations.every(isString) ||
     !isNonNegativeInteger(value.revision) ||
     !isFiniteNumber(value.updatedAt)
   ) {
     throw invalidSession("Session has an invalid shape.");
   }
 
-  if (value.transition !== undefined) {
-    if (!isRecord(value.transition)) throw invalidSession("Transition must be an object.");
-    const transition = value.transition;
-    if (
-      !isString(transition.id) ||
-      !isString(transition.fromScene) ||
-      !isString(transition.fromStep) ||
-      !isString(transition.toScene) ||
-      !transitionStatuses.includes(transition.status as TransitionStatus) ||
-      !isFiniteNumber(transition.startedAt) ||
-      !isFiniteNumber(transition.timeout) ||
-      transition.timeout < 0
-    ) {
-      throw invalidSession("Transition has an invalid shape.");
+  if (value.pendingOperation !== undefined) {
+    if (!isRecord(value.pendingOperation)) {
+      throw invalidSession("Pending operation must be an object.");
     }
-  }
-  if ((value.phase === "transition") !== (value.transition !== undefined)) {
-    throw invalidSession("Transition checkpoint does not match the session phase.");
+    const pending = value.pendingOperation;
+    if (
+      !isString(pending.address) ||
+      !isString(pending.kind) ||
+      !durabilities.includes(pending.durability as Durability) ||
+      !pendingStatuses.includes(pending.status as PendingOperationStatus) ||
+      !isFiniteNumber(pending.startedAt) ||
+      (pending.timeout !== undefined && (!isFiniteNumber(pending.timeout) || pending.timeout < 0))
+    ) {
+      throw invalidSession("Pending operation has an invalid shape.");
+    }
   }
 
   return value as unknown as ScenarioSession;

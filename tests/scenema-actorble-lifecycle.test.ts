@@ -3,24 +3,19 @@
 import type { ActionOrchestrator, VisualLayer } from "@actorble/browser";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createScenema, defineScenario } from "scenema";
+import { createScenema, defineScenario, step } from "scenema";
 
 const scenario = defineScenario({
   id: "actorble-lifecycle",
   version: 1,
-  scenes: [
-    {
-      id: "main",
-      match: {},
-      steps: [{ id: "target", target: "#target", enter: { cursor: "move" } }],
-    },
-  ],
+  steps: [step("target", (s) => s.cursor.move("#target"))],
 });
 
 describe("Scenema Actorble lifecycle", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    document.body.innerHTML = '<button id="target">Target</button>';
   });
 
   it("destroys the cursor and Actorble instance when a tour completes or stops", async () => {
@@ -39,7 +34,6 @@ describe("Scenema Actorble lifecycle", () => {
     });
 
     await scenema.start(scenario.id);
-    await scenema.proceed();
 
     expect(orchestrator.dispose).toHaveBeenCalledOnce();
     expect(visualLayer.clearFeedback).toHaveBeenCalledOnce();

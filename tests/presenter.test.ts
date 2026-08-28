@@ -6,7 +6,7 @@ import { createTourPresenter } from "@scenema/presenter";
 
 const controls = {
   proceed: vi.fn(),
-  previous: vi.fn(),
+  back: vi.fn(),
   stop: vi.fn(),
 };
 
@@ -48,11 +48,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Create a project" },
       {
-        sceneId: "projects",
-        stepId: "create",
-        stepNumber: 1,
-        totalSteps: 2,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "create", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 2 },
+        canBack: false,
         interaction: "locked",
         target: "#target",
         controls,
@@ -97,11 +97,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Footer action" },
       {
-        sceneId: "landing",
-        stepId: "footer",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "footer", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -121,18 +121,18 @@ describe("createTourPresenter overlay", () => {
       DOMRect.fromRect({ x: 100, y: 350, width: 200, height: 40 });
     const presenter = createTourPresenter({
       document,
-      preferredPlacement: ({ stepId }) => (stepId === "preferred" ? "top" : undefined),
+      preferredPlacement: ({ step }) => (step.id === "preferred" ? "top" : undefined),
       overlay: { padding: 10 },
     });
 
     presenter.present(
       { title: "Preferred composition" },
       {
-        sceneId: "landing",
-        stepId: "preferred",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "preferred", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -159,11 +159,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Safe fallback" },
       {
-        sceneId: "landing",
-        stepId: "fallback",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "fallback", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -184,11 +184,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Stable placement" },
       {
-        sceneId: "landing",
-        stepId: "stable",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "stable", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -218,11 +218,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Create a project" },
       {
-        sceneId: "projects",
-        stepId: "create",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "create", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -245,11 +245,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Finished" },
       {
-        sceneId: "projects",
-        stepId: "complete",
-        stepNumber: 2,
-        totalSteps: 2,
-        canPrevious: true,
+        scenarioId: "demo",
+        step: { id: "complete", index: 1 },
+        presentation: { index: 0 },
+        progress: { current: 2, total: 2 },
+        canBack: true,
         interaction: "passthrough",
         controls,
       },
@@ -280,11 +280,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Document anchored" },
       {
-        sceneId: "landing",
-        stepId: "anchor",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "anchor", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -324,11 +324,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Offscreen target" },
       {
-        sceneId: "landing",
-        stepId: "offscreen",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "offscreen", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -355,11 +355,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Document footer" },
       {
-        sceneId: "landing",
-        stepId: "document-footer",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "document-footer", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -390,11 +390,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Rounded target" },
       {
-        sceneId: "projects",
-        stepId: "rounded",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "rounded", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -426,11 +426,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Asymmetrically rounded target" },
       {
-        sceneId: "projects",
-        stepId: "asymmetric",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "asymmetric", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "passthrough",
         target: "#target",
         controls,
@@ -454,11 +454,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Locked" },
       {
-        sceneId: "projects",
-        stepId: "create",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "create", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "locked",
         controls,
       },
@@ -494,11 +494,11 @@ describe("createTourPresenter overlay", () => {
     presenter.present(
       { title: "Scoped guide" },
       {
-        sceneId: "projects",
-        stepId: "create",
-        stepNumber: 1,
-        totalSteps: 1,
-        canPrevious: false,
+        scenarioId: "demo",
+        step: { id: "create", index: 0 },
+        presentation: { index: 0 },
+        progress: { current: 1, total: 1 },
+        canBack: false,
         interaction: "locked",
         target: "#target",
         controls,

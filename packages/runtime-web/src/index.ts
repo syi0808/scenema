@@ -1,6 +1,7 @@
 export {
   DomConditionWaiter,
-  DomSceneMatcher,
+  isDomTargetVisible,
+  queryDomTarget,
   resolveDomTarget,
   type DomEnvironment,
 } from "./matcher.js";

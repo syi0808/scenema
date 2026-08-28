@@ -52,13 +52,13 @@ describe("landing content", () => {
     click("#code-tab-dom-action");
     await vi.waitFor(() =>
       expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
-        'type: { value: "Launch workspace" }',
+        's.type("#project-name", "Launch workspace")',
       ),
     );
     click("#code-tab-navigation");
     await vi.waitFor(() =>
       expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
-        'to: "project-detail"',
+        's.navigate.click("#project-link")',
       ),
     );
   });
@@ -116,7 +116,7 @@ describe("landing demos", () => {
     );
     await expectTourTitle("The interface responded");
     expect(document.querySelector("#scenario-code-panel")?.textContent).toContain(
-      'type: { value: "Launch workspace" }',
+      's.type("#project-name", "Launch workspace")',
     );
     clickTourNext();
   });

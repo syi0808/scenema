@@ -3,7 +3,9 @@ import {
   ScenarioRuntime,
   type Actor,
   type Presenter,
+  type PluginDefinition,
   type RuntimeInspection,
+  type RuntimeStatus,
   type ScenarioDefinition,
   type ScenarioSession,
   type ScenemaErrorCode,
@@ -11,9 +13,9 @@ import {
 import {
   ActiveSessionPointer,
   DomConditionWaiter,
-  DomSceneMatcher,
   LocalStorageSessionStore,
   createNavigationObserver,
+  resolveDomTarget,
   type NavigationObserver,
 } from "@scenema/runtime-web";
 
@@ -25,9 +27,12 @@ export interface ScenemaOptions {
   actor?: Actor;
   actorble?: ScenemaActorbleOptions;
   presenter: Presenter;
+  plugins?: readonly PluginDefinition[];
   window?: Window;
   document?: Document;
+  /** @deprecated Use navigationTimeout. */
   transitionTimeout?: number;
+  navigationTimeout?: number;
   conditionTimeout?: number;
   clickDelay?: number;
   cursorMoveDelay?: number;
@@ -43,9 +48,10 @@ export interface Scenema {
   start(scenario: string | ScenarioDefinition): Promise<ScenarioSession>;
   bootstrap(): Promise<boolean>;
   proceed(): Promise<void>;
+  back(): Promise<void>;
+  /** @deprecated Use back(). */
   previous(): Promise<void>;
   stop(): void;
-  reconcile(): Promise<void>;
   inspect(): RuntimeInspection;
   dispose(): void;
 }
@@ -62,51 +68,51 @@ export function createScenema(options: ScenemaOptions): Scenema {
 
   const store = new LocalStorageSessionStore(window.localStorage);
   const activeSession = new ActiveSessionPointer(window.sessionStorage);
-  let transitionTimer: number | undefined;
+  let navigationTimer: number | undefined;
   let runtime!: ScenarioRuntime;
-  const scheduleTransitionTimeout = (session: ScenarioSession | null) => {
-    if (transitionTimer !== undefined) window.clearTimeout(transitionTimer);
-    transitionTimer = undefined;
-    if (
-      session?.phase !== "transition" ||
-      !session.transition ||
-      session.transition.status === "arrived"
-    )
-      return;
-    const remaining = Math.max(
-      0,
-      session.transition.startedAt + session.transition.timeout - Date.now(),
-    );
-    transitionTimer = window.setTimeout(() => {
-      transitionTimer = undefined;
+  const scheduleNavigationTimeout = (session: ScenarioSession | null) => {
+    if (navigationTimer !== undefined) window.clearTimeout(navigationTimer);
+    navigationTimer = undefined;
+    const pending = session?.pendingOperation;
+    if (pending?.kind !== "navigate" || pending.timeout === undefined) return;
+    const remaining = Math.max(0, pending.startedAt + pending.timeout - Date.now());
+    navigationTimer = window.setTimeout(() => {
+      navigationTimer = undefined;
       void runtime
         .reconcile()
         .catch((error: unknown) => reportRuntimeOperationError(error, options, runtime));
     }, remaining);
   };
+  const operationHandlers = Object.assign(
+    {},
+    ...(options.plugins ?? []).map((plugin) => plugin.operations),
+  );
   runtime = new ScenarioRuntime({
     actor,
     presenter: options.presenter,
     sessionStore: store,
-    sceneMatcher: new DomSceneMatcher({ window, document }),
     conditionWaiter: new DomConditionWaiter({ window, document }, options.conditionTimeout),
+    operationHandlers,
+    resolveTarget: (target) => resolveDomTarget(document, target),
     clickDelay: Math.max(0, options.clickDelay ?? SCENEMA_CLICK_DELAY),
     cursorMoveDelay: Math.max(0, options.cursorMoveDelay ?? SCENEMA_CURSOR_MOVE_DELAY),
-    ...(options.transitionTimeout === undefined
+    ...(options.navigationTimeout === undefined && options.transitionTimeout === undefined
       ? {}
-      : { defaultTransitionTimeout: options.transitionTimeout }),
+      : {
+          defaultNavigationTimeout: options.navigationTimeout ?? options.transitionTimeout,
+        }),
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.onError ? { onError: options.onError } : {}),
-    onSessionChange(session) {
-      if (session.phase === "complete") {
+    onSessionChange(session, status: RuntimeStatus) {
+      if (status === "complete") {
         activeSession.clear();
         actorbleActor?.destroy();
       } else activeSession.set(session.id);
-      scheduleTransitionTimeout(session);
+      scheduleNavigationTimeout(session);
     },
     onSessionStop() {
       activeSession.clear();
-      scheduleTransitionTimeout(null);
+      scheduleNavigationTimeout(null);
       actorbleActor?.destroy();
     },
   });
@@ -163,7 +169,7 @@ export function createScenema(options: ScenemaOptions): Scenema {
       }
       try {
         await runtime.resume(scenario, session);
-        scheduleTransitionTimeout(runtime.inspect().session);
+        scheduleNavigationTimeout(runtime.inspect().session);
       } catch (error) {
         runtime.stop();
         activeSession.clear();
@@ -172,17 +178,17 @@ export function createScenema(options: ScenemaOptions): Scenema {
       return true;
     },
     proceed: () => runtime.proceed(),
+    back: () => runtime.back(),
     previous: () => runtime.previous(),
     stop() {
       runtime.stop();
       activeSession.clear();
     },
-    reconcile: () => runtime.reconcile(),
     inspect: () => runtime.inspect(),
     dispose() {
       unsubscribe();
       navigation.dispose();
-      if (transitionTimer !== undefined) window.clearTimeout(transitionTimer);
+      if (navigationTimer !== undefined) window.clearTimeout(navigationTimer);
       actorbleActor?.destroy();
     },
   };

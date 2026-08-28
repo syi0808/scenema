@@ -2,7 +2,10 @@ import {
   ScenarioRuntime,
   ScenemaError,
   deserializeSession,
+  definePlugin,
   defineScenario,
+  step,
+  visible,
   type Actor,
   type Presenter,
   type ScenarioSession,
@@ -32,404 +35,301 @@ class MemoryStore implements SessionStore {
 function createHarness(
   overrides: {
     actor?: Actor;
-    matchedScene?: () => string;
+    store?: MemoryStore;
     clickDelay?: number;
-    cursorMoveDelay?: number;
+    operationHandlers?: ConstructorParameters<typeof ScenarioRuntime>[0]["operationHandlers"];
   } = {},
 ) {
-  const store = new MemoryStore();
+  const store = overrides.store ?? new MemoryStore();
   const actor: Actor = overrides.actor ?? {
     moveTo: vi.fn(async () => undefined),
     click: vi.fn(async () => undefined),
     type: vi.fn(async () => undefined),
+    press: vi.fn(async () => undefined),
   };
   const presenter: Presenter = { present: vi.fn(), dismiss: vi.fn() };
-  let matchedScene = "main";
+  const conditionWaiter = { waitFor: vi.fn(async () => undefined) };
   const runtime = new ScenarioRuntime({
     actor,
     presenter,
     sessionStore: store,
-    sceneMatcher: {
-      matches: async (scene) => scene.id === (overrides.matchedScene?.() ?? matchedScene),
-    },
-    conditionWaiter: { waitFor: vi.fn(async () => undefined) },
+    conditionWaiter,
     createId: () => "session-1",
     now: () => 100,
     ...(overrides.clickDelay === undefined ? {} : { clickDelay: overrides.clickDelay }),
-    ...(overrides.cursorMoveDelay === undefined
-      ? {}
-      : { cursorMoveDelay: overrides.cursorMoveDelay }),
+    ...(overrides.operationHandlers ? { operationHandlers: overrides.operationHandlers } : {}),
   });
-  return { runtime, store, actor, presenter, setMatchedScene: (id: string) => (matchedScene = id) };
+  return { runtime, store, actor, presenter, conditionWaiter };
 }
 
-describe("ScenarioRuntime", () => {
-  it("runs guided steps through enter, present, commit, and complete", async () => {
-    const scenario = defineScenario({
-      id: "typing",
-      version: 1,
-      scenes: [
+describe("step builder", () => {
+  it("builds an ordered operation definition synchronously", () => {
+    const definition = step("create", { ready: visible("#form") }, (s) => {
+      s.cursor.move("#name");
+      s.present({ target: "#name", title: "Name it" });
+      s.type("#name", "Scenema");
+      s.waitFor.value("#name", "Scenema", { timeout: 100 });
+      s.navigate.click("#next", { timeout: 500 });
+    });
+
+    expect(definition).toEqual({
+      id: "create",
+      ready: { kind: "visible", target: "#form" },
+      operations: [
+        { kind: "cursor.move", target: "#name" },
         {
-          id: "main",
-          match: { pathname: "/" },
-          steps: [
-            {
-              id: "name",
-              target: "#name",
-              enter: { cursor: "move" },
-              present: { title: "Name it" },
-              commit: { type: { value: "Scenema" } },
-              exit: { until: { value: "Scenema" } },
-            },
-          ],
+          kind: "present",
+          target: "#name",
+          content: { title: "Name it" },
+          interaction: "auto",
+          advance: "user",
+        },
+        { kind: "type", target: "#name", value: "Scenema" },
+        {
+          kind: "wait",
+          condition: { kind: "value", target: "#name", value: "Scenema" },
+          timeout: 100,
+        },
+        {
+          kind: "navigate",
+          action: { kind: "click", target: "#next" },
+          timeout: 500,
         },
       ],
     });
-    const { runtime, store, actor, presenter } = createHarness();
-
-    await runtime.start(scenario);
-    expect(actor.moveTo).toHaveBeenCalledWith("#name");
-    expect(presenter.present).toHaveBeenCalledOnce();
-    expect(presenter.present).toHaveBeenCalledWith(
-      { title: "Name it" },
-      expect.objectContaining({ interaction: "locked" }),
-    );
-    expect(runtime.inspect().currentPhase).toBe("present");
-
-    await runtime.proceed();
-    expect(actor.type).toHaveBeenCalledWith("#name", "Scenema");
-    expect(runtime.inspect().currentPhase).toBe("complete");
-    expect(store.writes.map(({ phase }) => phase)).toEqual([
-      "enter",
-      "enter",
-      "present",
-      "commit",
-      "commit",
-      "complete",
-    ]);
   });
 
-  it("does not replay a completed commit after going back", async () => {
-    const scenario = defineScenario({
-      id: "backtracking",
-      version: 1,
-      scenes: [
-        {
-          id: "main",
-          match: {},
-          steps: [
-            {
-              id: "name",
-              target: "#name",
-              present: { title: "Name it" },
-              commit: { type: { value: "Scenema" } },
-            },
-            { id: "review", present: { title: "Review it" } },
-          ],
-        },
-      ],
-    });
-    const { runtime, actor } = createHarness();
-
-    await runtime.start(scenario);
-    await runtime.proceed();
-    await runtime.previous();
-    await runtime.proceed();
-
-    expect(actor.type).toHaveBeenCalledOnce();
-    expect(runtime.inspect().currentStep?.id).toBe("review");
-    expect(runtime.inspect().currentPhase).toBe("present");
+  it("rejects async workflow builders", () => {
+    expect(() =>
+      step("async", (async (s) => {
+        s.present("Nope");
+      }) as unknown as (builder: Parameters<Parameters<typeof step>[1]>[0]) => void),
+    ).toThrow(/synchronous/);
   });
 
-  it("persists a prepared transition before performing its trigger", async () => {
-    let currentScene = "source";
-    const store = new MemoryStore();
-    const click = vi.fn(async () => {
-      const checkpoint = store.writes.at(-1)!;
-      expect(checkpoint.phase).toBe("transition");
-      expect(checkpoint.transition?.status).toBe("prepared");
-      currentScene = "destination";
-    });
-    const runtime = new ScenarioRuntime({
-      actor: { moveTo: vi.fn(), click, type: vi.fn() },
-      presenter: { present: vi.fn(), dismiss: vi.fn() },
-      sessionStore: store,
-      sceneMatcher: { matches: async (scene) => scene.id === currentScene },
-      conditionWaiter: { waitFor: vi.fn() },
-      createId: () => "session-1",
-      now: () => 1_000,
-    });
-    const scenario = defineScenario({
-      id: "navigation",
-      version: 1,
-      scenes: [
-        {
-          id: "source",
-          match: {},
-          steps: [
-            {
-              id: "go",
-              target: "#go",
-              transition: { trigger: { click: true }, to: "destination" },
-            },
-          ],
-        },
-        { id: "destination", match: {}, steps: [{ id: "arrived", present: { title: "Arrived" } }] },
-      ],
-    });
-
-    await runtime.start(scenario);
-    await runtime.proceed();
-
-    expect(click).toHaveBeenCalledOnce();
-    expect(runtime.inspect()).toMatchObject({
-      currentPhase: "present",
-      currentScene: { id: "destination" },
-      currentStep: { id: "arrived" },
-    });
-    const arrivedWrite = store.writes.find(({ transition }) => transition?.status === "arrived");
-    expect(arrivedWrite).toBeDefined();
-  });
-
-  it("waits before starting an automated click", async () => {
-    vi.useFakeTimers();
-    try {
-      const click = vi.fn(async () => undefined);
-      const { runtime } = createHarness({
-        actor: { moveTo: vi.fn(), click, type: vi.fn() },
-        clickDelay: 300,
-      });
-      const scenario = defineScenario({
-        id: "delayed-click",
-        version: 1,
-        scenes: [
-          {
-            id: "main",
-            match: {},
-            steps: [{ id: "click", target: "#target", commit: { click: true } }],
-          },
+  it("accepts declarative steps and rejects duplicate ids", () => {
+    expect(() =>
+      defineScenario({
+        id: "duplicate",
+        version: 2,
+        steps: [
+          { id: "same", operations: [] },
+          { id: "same", operations: [] },
         ],
-      });
-
-      await runtime.start(scenario);
-      const operation = runtime.proceed();
-
-      expect(click).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(299);
-      expect(click).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(1);
-      await operation;
-      expect(click).toHaveBeenCalledOnce();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("pauses after an action before moving the cursor to the next step", async () => {
-    vi.useFakeTimers();
-    try {
-      const moveTo = vi.fn(async () => undefined);
-      const click = vi.fn(async () => undefined);
-      const { runtime } = createHarness({
-        actor: { moveTo, click, type: vi.fn() },
-        cursorMoveDelay: 300,
-      });
-      const scenario = defineScenario({
-        id: "delayed-cursor-move",
-        version: 1,
-        scenes: [
-          {
-            id: "main",
-            match: {},
-            steps: [
-              { id: "click", target: "#one", commit: { click: true } },
-              { id: "next", target: "#two", enter: { cursor: "move" } },
-            ],
-          },
-        ],
-      });
-
-      await runtime.start(scenario);
-      const operation = runtime.proceed();
-
-      await vi.advanceTimersByTimeAsync(0);
-      expect(click).toHaveBeenCalledOnce();
-      expect(moveTo).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(299);
-      expect(moveTo).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(1);
-      await operation;
-      expect(moveTo).toHaveBeenCalledOnce();
-      expect(moveTo).toHaveBeenCalledWith("#two");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("restores a presenting step and its cursor without replaying enter choreography", async () => {
-    const scenario = defineScenario({
-      id: "restore",
-      version: 1,
-      scenes: [
-        {
-          id: "main",
-          match: {},
-          steps: [
-            { id: "one", target: "#one", enter: { cursor: "move" }, present: { title: "One" } },
-          ],
-        },
-      ],
-    });
-    const first = createHarness();
-    const session = await first.runtime.start(scenario);
-    const restoreCursor = vi.fn(async () => undefined);
-    const moveTo = vi.fn(async () => undefined);
-    const second = createHarness({
-      actor: { moveTo, restoreCursor, click: vi.fn(), type: vi.fn() },
-    });
-
-    await second.runtime.resume(scenario, structuredClone(session));
-
-    expect(session.cursorTarget).toBe("#one");
-    expect(moveTo).not.toHaveBeenCalled();
-    expect(restoreCursor).toHaveBeenCalledOnce();
-    expect(restoreCursor).toHaveBeenCalledWith("#one");
-    expect(second.presenter.present).toHaveBeenCalledOnce();
-    expect(second.runtime.inspect().currentPhase).toBe("present");
-  });
-
-  it("continues restoring the presentation when cursor recovery is unavailable", async () => {
-    const scenario = defineScenario({
-      id: "restore-without-target",
-      version: 1,
-      scenes: [
-        {
-          id: "main",
-          match: {},
-          steps: [
-            { id: "one", target: "#one", enter: { cursor: "move" }, present: { title: "One" } },
-          ],
-        },
-      ],
-    });
-    const first = createHarness();
-    const session = await first.runtime.start(scenario);
-    const restoreCursor = vi.fn(async () => {
-      throw new Error("target disappeared");
-    });
-    const second = createHarness({
-      actor: { moveTo: vi.fn(), restoreCursor, click: vi.fn(), type: vi.fn() },
-    });
-
-    await expect(
-      second.runtime.resume(scenario, structuredClone(session)),
-    ).resolves.toBeUndefined();
-
-    expect(second.presenter.present).toHaveBeenCalledOnce();
-    expect(second.runtime.inspect().currentPhase).toBe("present");
-  });
-
-  it("stops and removes the session when the document leaves the current scene", async () => {
-    const scenario = defineScenario({
-      id: "drift",
-      version: 1,
-      scenes: [
-        {
-          id: "main",
-          match: {},
-          steps: [{ id: "one", present: { title: "One" } }],
-        },
-      ],
-    });
-    const { runtime, store, setMatchedScene, presenter } = createHarness();
-    await runtime.start(scenario);
-    setMatchedScene("elsewhere");
-
-    await expect(runtime.reconcile()).rejects.toMatchObject({ code: "SCENE_NOT_FOUND" });
-
-    expect(runtime.inspect().session).toBeNull();
-    expect(store.sessions.size).toBe(0);
-    expect(presenter.dismiss).toHaveBeenCalled();
-  });
-
-  it("uses the persisted absolute start time for transition timeouts", async () => {
-    let now = 1_000;
-    const runtime = new ScenarioRuntime({
-      actor: { moveTo: vi.fn(), click: vi.fn(), type: vi.fn() },
-      presenter: { present: vi.fn(), dismiss: vi.fn() },
-      sessionStore: new MemoryStore(),
-      sceneMatcher: { matches: async (scene) => scene.id === "source" },
-      conditionWaiter: { waitFor: vi.fn() },
-      createId: () => "session-1",
-      now: () => now,
-    });
-    const scenario = defineScenario({
-      id: "timeout",
-      version: 1,
-      scenes: [
-        {
-          id: "source",
-          match: {},
-          steps: [
-            {
-              id: "go",
-              target: "#go",
-              transition: { trigger: { click: true }, to: "destination", timeout: 500 },
-            },
-          ],
-        },
-        { id: "destination", match: {}, steps: [{ id: "done" }] },
-      ],
-    });
-    await runtime.start(scenario);
-    await runtime.proceed();
-    now = 1_500;
-
-    await expect(runtime.reconcile()).rejects.toMatchObject({ code: "TRANSITION_TIMEOUT" });
+      }),
+    ).toThrow(/duplicated/);
   });
 });
 
-describe("defineScenario", () => {
-  it("rejects transitions to unknown scenes", () => {
-    expect(() =>
-      defineScenario({
-        id: "bad",
-        version: 1,
-        scenes: [
-          {
-            id: "only",
-            match: {},
-            steps: [
-              { id: "go", target: "#go", transition: { trigger: { click: true }, to: "missing" } },
-            ],
-          },
-        ],
+describe("ScenarioRuntime", () => {
+  it("executes operations in source order and pauses at presentations", async () => {
+    const scenario = defineScenario({
+      id: "typing",
+      version: 2,
+      steps: [
+        step("name", (s) => {
+          s.cursor.move("#name");
+          s.present({ target: "#name", title: "Name it" });
+          s.type("#name", "Scenema");
+          s.waitFor.value("#name", "Scenema");
+        }),
+      ],
+    });
+    const { runtime, actor, presenter, conditionWaiter } = createHarness();
+
+    await runtime.start(scenario);
+    expect(actor.moveTo).toHaveBeenCalledWith("#name", undefined);
+    expect(runtime.inspect()).toMatchObject({ status: "presenting", currentStep: { id: "name" } });
+    expect(presenter.present).toHaveBeenCalledWith(
+      { title: "Name it" },
+      expect.objectContaining({
+        progress: { current: 1, total: 1 },
+        interaction: "locked",
       }),
-    ).toThrow(/unknown scene/);
+    );
+
+    await runtime.proceed();
+    expect(actor.type).toHaveBeenCalledWith("#name", "Scenema", undefined);
+    expect(conditionWaiter.waitFor).toHaveBeenCalledWith(
+      { kind: "value", target: "#name", value: "Scenema" },
+      undefined,
+    );
+    expect(runtime.inspect().status).toBe("complete");
+  });
+
+  it("counts user presentations instead of steps", async () => {
+    const scenario = defineScenario({
+      id: "progress",
+      version: 2,
+      steps: [
+        step("one", (s) => {
+          s.present({ title: "Loading", advance: "auto" });
+          s.present("A");
+          s.click("#effect");
+          s.present("B");
+        }),
+        step("two", (s) => s.present("C")),
+      ],
+    });
+    const { runtime, presenter } = createHarness();
+
+    await runtime.start(scenario);
+    expect(presenter.present).toHaveBeenLastCalledWith(
+      { title: "A" },
+      expect.objectContaining({ progress: { current: 1, total: 3 } }),
+    );
+    await runtime.proceed();
+    expect(presenter.present).toHaveBeenLastCalledWith(
+      { title: "B" },
+      expect.objectContaining({ progress: { current: 2, total: 3 } }),
+    );
+    await runtime.proceed();
+    expect(presenter.present).toHaveBeenLastCalledWith(
+      { title: "C" },
+      expect.objectContaining({ progress: { current: 3, total: 3 } }),
+    );
+  });
+
+  it("moves back by presentation checkpoint without replaying effects", async () => {
+    const scenario = defineScenario({
+      id: "back",
+      version: 2,
+      steps: [
+        step("flow", (s) => {
+          s.present("A");
+          s.click("#effect");
+          s.present("B");
+        }),
+      ],
+    });
+    const { runtime, actor, presenter } = createHarness();
+
+    await runtime.start(scenario);
+    await runtime.proceed();
+    await runtime.back();
+    expect(presenter.present).toHaveBeenLastCalledWith(
+      { title: "A" },
+      expect.objectContaining({ canBack: false }),
+    );
+    await runtime.proceed();
+
+    expect(actor.click).toHaveBeenCalledOnce();
+    expect(presenter.present).toHaveBeenLastCalledWith(
+      { title: "B" },
+      expect.objectContaining({ progress: { current: 2, total: 2 } }),
+    );
+  });
+
+  it("persists an at-most-once checkpoint before clicking", async () => {
+    const never = new Promise<void>(() => undefined);
+    const store = new MemoryStore();
+    const first = createHarness({
+      store,
+      actor: {
+        moveTo: vi.fn(),
+        click: vi.fn(() => never),
+        type: vi.fn(),
+      },
+    });
+    const scenario = defineScenario({
+      id: "recover-click",
+      version: 2,
+      steps: [
+        step("flow", (s) => {
+          s.present("Before");
+          s.click("#effect");
+          s.present("After");
+        }),
+      ],
+    });
+
+    await first.runtime.start(scenario);
+    void first.runtime.proceed();
+    await vi.waitFor(() =>
+      expect(store.writes.at(-1)?.pendingOperation).toMatchObject({
+        kind: "click",
+        durability: "at-most-once",
+        status: "prepared",
+      }),
+    );
+
+    const second = createHarness();
+    await second.runtime.resume(scenario, structuredClone(store.writes.at(-1)!));
+    expect(second.actor.click).not.toHaveBeenCalled();
+    expect(second.presenter.present).toHaveBeenCalledWith({ title: "After" }, expect.any(Object));
+  });
+
+  it("persists and reconciles navigation into the next ready step", async () => {
+    const store = new MemoryStore();
+    const scenario = defineScenario({
+      id: "navigation",
+      version: 2,
+      steps: [
+        step("leave", (s) => {
+          s.present("Leave");
+          s.navigate.click("#next");
+        }),
+        step("arrive", { ready: visible("#arrived") }, (s) => s.present("Arrived")),
+      ],
+    });
+    const { runtime, actor, presenter, conditionWaiter } = createHarness({ store });
+
+    await runtime.start(scenario);
+    await runtime.proceed();
+
+    const prepared = store.writes.find((session) => session.pendingOperation?.kind === "navigate");
+    expect(prepared?.pendingOperation).toMatchObject({
+      address: "leave/1",
+      durability: "reconcile",
+      status: "prepared",
+    });
+    expect(actor.click).toHaveBeenCalledOnce();
+    expect(conditionWaiter.waitFor).toHaveBeenCalledWith(visible("#arrived"), expect.any(Object));
+    expect(presenter.present).toHaveBeenLastCalledWith(
+      { title: "Arrived" },
+      expect.objectContaining({ step: { id: "arrive", index: 1 } }),
+    );
+  });
+
+  it("executes registered plugin operations", async () => {
+    const execute = vi.fn();
+    const plugin = definePlugin({ operations: { "scroll.to": { execute } } });
+    const scenario = defineScenario({
+      id: "plugin",
+      version: 2,
+      steps: [step("custom", (s) => s.use({ kind: "scroll.to", target: "#pricing" }))],
+    });
+    const { runtime } = createHarness({ operationHandlers: plugin.operations });
+
+    await runtime.start(scenario);
+
+    expect(execute).toHaveBeenCalledWith(
+      { kind: "scroll.to", target: "#pricing" },
+      expect.objectContaining({ address: "custom/0" }),
+    );
+    expect(runtime.inspect().status).toBe("complete");
   });
 });
 
 describe("session codec", () => {
-  it("round-trips a semantic cursor target", () => {
+  it("round-trips a v2 operation position", () => {
     const session = deserializeSession(
       JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: "session",
         scenarioId: "demo",
-        scenarioVersion: 1,
-        sceneId: "a",
-        stepId: "one",
-        phase: "present",
-        cursorTarget: "#one",
+        scenarioVersion: 2,
+        position: { stepId: "one", operationIndex: 3 },
+        completedOperations: ["one/0", "one/1"],
         revision: 1,
         updatedAt: 1,
       }),
     );
 
-    expect(session.cursorTarget).toBe("#one");
+    expect(session.position).toEqual({ stepId: "one", operationIndex: 3 });
   });
 
-  it("rejects a transition phase without a checkpoint", () => {
+  it("rejects a v1 lifecycle session", () => {
     expect(() =>
       deserializeSession(
         JSON.stringify({
@@ -439,7 +339,7 @@ describe("session codec", () => {
           scenarioVersion: 1,
           sceneId: "a",
           stepId: "one",
-          phase: "transition",
+          phase: "present",
           revision: 1,
           updatedAt: 1,
         }),
